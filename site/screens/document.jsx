@@ -93,7 +93,7 @@ export function DocumentScreen({ screen, chrome }) {
                 <VersionLabel version={isBulletin ? shown.version : doc.version} status={!isBulletin || current === 'v3' ? 'latest' : undefined} />
                 <Text variant="secondary">Changed <Time value={isBulletin ? shown.dateTime : doc.modified} format="label" now={new Date('2026-10-25T09:00')} /></Text>
               </Inline>
-              <Inline>
+              <Inline wrap>
                 {progress !== null && progress < 100 ? <ProgressCircle value={progress} size="sm" label={'Downloading ' + doc.name} /> : null}
                 {progress === 100 ? <Badge tone="success" icon="check">Downloaded</Badge> : null}
                 <Button icon="download-tray" disabled={progress !== null && progress < 100} onClick={download}>Download</Button>
