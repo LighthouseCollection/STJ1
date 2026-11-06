@@ -4,10 +4,11 @@
    conditions: status is Active, district is North or East), a ministry QuickFilter, Sort, Group (grouped by district with
    a count and an average age in each group header), Columns, the Manage columns dialog and View. Selecting rows swaps the
    bar to the selection's commands (Escape in the bar clears them); Delete runs a DeleteFlow. Export opens the ExportDialog (it builds
-   a real CSV file), Import the ImportDialog or the ImportWizard (column mapping). */
+   a real CSV file), Import the ImportDialog or the ImportWizard (column mapping). A TableSettings around the grid offers inline and form
+   editing in its view menu. */
 import {
   Badge, CommandBar, CommandBarButton, CommandBarSearch, ColumnsMenu, DataGrid, DeleteFlow, ExportDialog, FilterPanel, GroupPanel,
-  ImportDialog, ImportWizard, ManageColumnsDialog, PageContent, QuickFilter, RecordPage, SortPanel, Tag, TagList, ViewMenu,
+  ImportDialog, ImportWizard, ManageColumnsDialog, PageContent, QuickFilter, RecordPage, SortPanel, TableSettings, Tag, TagList, ViewMenu,
   useCollectionView, useCommandBar, useToast,
 } from 'plenix-platform';
 import { MEMBERS, MINISTRIES, MEMBER_STATUS, familyById } from '../data.js';
@@ -124,6 +125,7 @@ export function MembersScreen({ screen, chrome }) {
               onSelect: () => toast.show(sel.length + ' members added to ' + x.name, { tone: 'success' }) })) },
             { id: 'export', label: 'Export', icon: 'export', onSelect: () => setExporting(true) },
             { id: 'delete', label: 'Delete', icon: 'trash', danger: true, onSelect: () => setDeleting(true) }] }} />
+        <TableSettings editModes={['inline', 'form']} editMode="inline">
         <DataGrid label="Members" data={rows} columns={COLUMNS} index="id" selectable selected={sel}
           onSelectionChange={(keys, info) => { setSel(keys); setHidden((info && info.hidden) || 0); }}
           onRowClick={(m) => screen.navigate('/member/' + m.id)}
@@ -135,6 +137,7 @@ export function MembersScreen({ screen, chrome }) {
             { label: 'Delete', icon: 'trash', danger: true, onSelect: (m) => { setSel([m.id]); setDeleting(true); } }]}
           empty="No member matches the search and filters"
           {...v.tableProps} />
+        </TableSettings>
       </PageContent>
       <DeleteFlow open={deleting} items={chosen.map((m) => ({ id: m.id, label: m.name }))} noun="member"
         consequence="Their gifts stay on record under their family."

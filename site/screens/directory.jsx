@@ -2,9 +2,10 @@
    printed one. A ListingPage: a FilterBar (town, district) and a DataToolbar (Chip toggles, print); the households as a
    selectable ResourceList a page at a time (Pagination), with BulkActions for mailing labels and a Drawer quick view of a
    household (its people as DataPills); everyone A to Z in a grouped VirtualList; the newest members with LoadMore; and the
-   phone list as a DataGrid in load-more mode with medium rows. */
+   phone list as a DataGrid in load-more mode with medium rows. A panel on the printed directory shows its EntityTitle and an
+   OverflowList of its actions. */
 import {
-  BulkActions, Button, Chip, DataGrid, DataPill, DataToolbar, Drawer, FilterBar, ListingPage, LoadMore, Pagination, Panel, PropertyList,
+  BulkActions, Button, Chip, DataGrid, DataPill, DataToolbar, Drawer, EntityTitle, FilterBar, ListingPage, LoadMore, OverflowList, Pagination, Panel, PropertyList,
   ResourceList, Stack, StatusIcon, TagList, Text, VirtualList, useToast,
 } from 'plenix-platform';
 import { FAMILIES, MEMBERS, membersOf, familyById } from '../data.js';
@@ -61,6 +62,18 @@ export function DirectoryScreen({ screen, chrome }) {
           start={<TagList label="Show"><Chip selected={servantsOnly} onClick={() => { setServantsOnly(!servantsOnly); setPage(1); }}>Servants only</Chip>
             <Chip selected={phones} onClick={() => setPhones(!phones)}>Phone numbers</Chip></TagList>}
           end={<Text variant="secondary">{families.length} households · {people.length} people</Text>} />
+
+        <Panel title="The printed directory" description="The office prints it each Nayrouz. These actions fold into the more button when the page is narrow.">
+          <Stack gap="md">
+            <EntityTitle icon="document" title="Parish directory, Nayrouz 2026" subtitle="Last printed September 11, 2026" tag={{ label: 'Printed', tone: 'success', icon: 'check' }} level={3} />
+            <OverflowList label="Directory actions" items={[
+              { id: 'print', label: 'Print', icon: 'export', onSelect: () => window.print() },
+              { id: 'form', label: 'Membership form', icon: 'document', href: '#/print/membership-form' },
+              { id: 'labels', label: 'Mailing labels', icon: 'mail', onSelect: () => toast.show('The mailing labels are ready to print', { tone: 'success' }) },
+              { id: 'email', label: 'Email households', icon: 'mail', onSelect: () => toast.show('A new email to the listed households is ready in Messages', { tone: 'success' }) },
+              { id: 'share', label: 'Copy link', icon: 'share', onSelect: () => toast.show('The link to this page is copied') }]} />
+          </Stack>
+        </Panel>
 
         <Panel title="Households" description="Choose households to print mailing labels; open one for a quick look.">
           <Stack gap="md">

@@ -31,6 +31,7 @@ export const PAGES = [
   {"id":"media","group":"Library","path":"/media","title":"Sermons and media","screen":"media","icon":"headphones"},
   {"id":"photo","group":"Library","path":"/photo/:id","open":"/photo/v5","title":"Photo","screen":"photo","nav":false},
   {"id":"reports","group":"Library","path":"/reports","title":"Reports","screen":"reports","icon":"chart"},
+  {"id":"print-form","group":"People","path":"/print/membership-form","title":"Membership form","screen":"print-form","nav":false},
   {"id":"search","group":"Library","path":"/search","open":"/search?q=girgis","title":"Search","screen":"search","nav":false},
   {"id":"settings","group":"Administration","path":"/settings/:id","open":"/settings/general","title":"Settings","screen":"settings","icon":"gear","navOpen":"/settings/general"},
   {"id":"account","group":"Administration","path":"/account","title":"My account","screen":"account","icon":"settings-profile"},
