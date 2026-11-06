@@ -13,6 +13,9 @@ import {
 } from 'plenix-platform';
 import { MEMBERS, MINISTRIES, MEMBER_STATUS, familyById } from '../data.js';
 import { SitePage } from '../site.jsx';
+// TableSettings is newer than the pinned Plenix (0.89.0): until the next release the grid is drawn without it
+function GridSettings({ children, ...props }) { return TableSettings ? <TableSettings {...props}>{children}</TableSettings> : children; }
+
 const { useState, useEffect, useMemo } = React;
 
 // a status as a badge with its icon (never a dot)
@@ -125,7 +128,7 @@ export function MembersScreen({ screen, chrome }) {
               onSelect: () => toast.show(sel.length + ' members added to ' + x.name, { tone: 'success' }) })) },
             { id: 'export', label: 'Export', icon: 'export', onSelect: () => setExporting(true) },
             { id: 'delete', label: 'Delete', icon: 'trash', danger: true, onSelect: () => setDeleting(true) }] }} />
-        <TableSettings editModes={['inline', 'form']} editMode="inline">
+        <GridSettings editModes={['inline', 'form']} editMode="inline">
         <DataGrid label="Members" data={rows} columns={COLUMNS} index="id" selectable selected={sel}
           onSelectionChange={(keys, info) => { setSel(keys); setHidden((info && info.hidden) || 0); }}
           onRowClick={(m) => screen.navigate('/member/' + m.id)}
@@ -137,7 +140,7 @@ export function MembersScreen({ screen, chrome }) {
             { label: 'Delete', icon: 'trash', danger: true, onSelect: (m) => { setSel([m.id]); setDeleting(true); } }]}
           empty="No member matches the search and filters"
           {...v.tableProps} />
-        </TableSettings>
+        </GridSettings>
       </PageContent>
       <DeleteFlow open={deleting} items={chosen.map((m) => ({ id: m.id, label: m.name }))} noun="member"
         consequence="Their gifts stay on record under their family."

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "St. John the Beloved Coptic Orthodox Church: the Plenix test site (church database and membership, made-up data). Loads Plenix from the CDN.",
-  "plenix": "0.75.0",
+  "plenix": "0.89.0",
   "scripts": {
     "build": "node build.js",
     "start": "node server/server.js",
