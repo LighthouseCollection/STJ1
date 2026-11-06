@@ -9,8 +9,8 @@
    The custom chart's line takes ChartFrame's documented mark class (plx-chart__line): a custom chart's marks have no other way to take their
    color (tests/site-check.js allows ChartFrame's mark classes). */
 import {
-  AreaChart, Axis, BarChart, BoxPlot, ChartAnnotation, ChartBrush, ChartFocusMark, ChartFrame, ChartLegend, ChartTooltip, Columns,
-  ComparisonView, DataLabel, FunnelChart, Gauge, GridLines, Heading, HeatMap, Inline, LineChart, LollipopChart, PageContent, Panel,
+  Anchor, AreaChart, Axis, BarChart, BoxPlot, ChartAnnotation, ChartBrush, ChartFocusMark, ChartFrame, ChartLegend, ChartTooltip, Columns,
+  ComparisonView, DataLabel, FunnelChart, Gauge, GridLines, Heading, HeatMap, Inline, LineChart, LollipopChart, MenuBar, MenuBarMenu, MenuDivider, MenuItem, PageContent, Panel,
   PieChart, RadarChart, ReferenceLine, SankeyDiagram, ScatterChart, Sparkline, Stack, Text, WordCloud, chartTooltipText,
   formatCurrency, formatNumber, scaleBand, scaleLinear, scalePosition, seriesColor, useChartInteraction,
 } from 'plenix-platform';
@@ -114,6 +114,8 @@ const SERMONS = [
   ['thanksgiving', 16], ['the Good Shepherd', 18], ['light', 11], ['the Agpeya', 12], ['peace', 15], ['faith', 33], ['charity', 23], ['the Resurrection', 28],
 ].map(([text, value]) => ({ text, value }));
 
+const SECTIONS = [{ id: 'reports-attendance', label: 'Attendance' }, { id: 'reports-giving', label: 'Giving' }, { id: 'reports-ministries', label: 'Ministries' }, { id: 'reports-growth', label: 'Growth' }];
+
 export function ReportsScreen({ chrome }) {
   const byMethod = useMemo(() => METHOD_LIST.map((m) => ({ id: m, label: m, value: Math.round(GIFTS.filter((g) => g.method === m).reduce((s, g) => s + g.amount, 0)) })), []);
   const sizes = useMemo(() => FUNDS.map((f) => ({ id: f.id, label: f.name, values: GIFTS.filter((g) => g.fund === f.id).map((g) => g.amount) })), []);
@@ -128,8 +130,20 @@ export function ReportsScreen({ chrome }) {
             <Text as="p" variant="secondary">For the parish council's meeting of October 28, 2026. Attendance is the number of people at each service.</Text>
           </Stack>
 
+          <MenuBar label="Report">
+            <MenuBarMenu label="File">
+              <MenuItem onSelect={() => window.print()}>Print this report</MenuItem>
+              <MenuDivider />
+              <MenuItem onSelect={() => { location.hash = '#/print/membership-form'; }}>Open the membership form</MenuItem>
+            </MenuBarMenu>
+            <MenuBarMenu label="Go to">
+              {SECTIONS.map((x) => <MenuItem key={x.id} onSelect={() => document.getElementById(x.id)?.scrollIntoView()}>{x.label}</MenuItem>)}
+            </MenuBarMenu>
+          </MenuBar>
+          <Anchor items={SECTIONS} label="On this page" />
+
           <Stack gap="md">
-            <Heading level={2}>Attendance</Heading>
+            <Heading level={2} id="reports-attendance">Attendance</Heading>
             <SundayAttendance />
             <Columns count={2} collapseBelow="wide">
               <LineChart title="People at services, by month" description="Attendance rose through Great Lent and the Resurrection and dipped in the summer."
@@ -159,7 +173,7 @@ export function ReportsScreen({ chrome }) {
           </Stack>
 
           <Stack gap="md">
-            <Heading level={2}>Giving</Heading>
+            <Heading level={2} id="reports-giving">Giving</Heading>
             <Columns count={2} collapseBelow="wide">
               <PieChart variant="donut" title="Gifts by method" description="Cards and checks bring in most of the giving." data={byMethod} format={dollars} centerLabel="Given this year" />
               <Stack>
@@ -180,7 +194,7 @@ export function ReportsScreen({ chrome }) {
           </Stack>
 
           <Stack gap="md">
-            <Heading level={2}>Ministries</Heading>
+            <Heading level={2} id="reports-ministries">Ministries</Heading>
             <Columns count={2} collapseBelow="wide">
               <RadarChart title="Ministry health" description="Sunday School is strong everywhere but outreach; the Agape Kitchen needs more servants."
                 axes={[{ key: 'attendance', label: 'Attendance' }, { key: 'servants', label: 'Servants' }, { key: 'growth', label: 'Growth' }, { key: 'retention', label: 'Retention' }, { key: 'outreach', label: 'Outreach' }]}
@@ -201,7 +215,7 @@ export function ReportsScreen({ chrome }) {
           </Stack>
 
           <Stack gap="md">
-            <Heading level={2}>Growth</Heading>
+            <Heading level={2} id="reports-growth">Growth</Heading>
             <Columns count={2} collapseBelow="wide">
               <FunnelChart title="From first visit to member, 2026" description="Most visitors come back; the largest drop is before they join a ministry." valueTitle="People"
                 data={[{ label: 'Visited for the first time', value: 214 }, { label: 'Came back', value: 138 }, { label: 'Met with a priest', value: 96 }, { label: 'Joined a ministry', value: 61 }, { label: 'Registered as members', value: 44 }]} />
