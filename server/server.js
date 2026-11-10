@@ -1,7 +1,8 @@
 /* St. John the Beloved test site · the server (server/server.js): Node 22, one library (the PostgreSQL driver).
-   It serves the site's page (public/index.html with the Plenix address filled in), the built page script (public/app.js),
-   the pictures (public/assets/), and a small JSON API over the parish database:
-     GET  /api/bootstrap                 every list the pages draw (members, families, events, gifts, …), in one answer
+   It serves the site's page (public/index.html with the Plenix address filled in, never kept by the browser), the built
+   scripts (public/app.<hash>.js and public/screens/<name>.<hash>.js, kept for a year: a new build has new names), the
+   pictures (public/assets/), and a small JSON API over the parish database; what is large goes out compressed (brotli or gzip):
+     GET  /api/lists?names=a,b           the lists a screen draws (members, families, events, gifts, …: site/data.js LISTS), in one answer
      POST /api/members                   a new member (and a new family when the member starts one)
      PATCH /api/members/:id              a member's details
      PUT  /api/slots/:id/signups         the servants signed up for a serving slot: { members: [ids] }
@@ -18,6 +19,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const util = require('util');
+const zlib = require('zlib');
 const { open } = require('../db/db.js');
 const { migrate } = require('../db/migrate.js');
 const { seed } = require('../db/seed.js');
@@ -34,11 +37,18 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 
 let db = null;
 
-// ---- the answers
-const send = (res, status, body, type) => {
-  const text = typeof body === 'string' ? body : JSON.stringify(body);
-  res.writeHead(status, { 'Content-Type': type || 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-  res.end(text);
+// ---- the answers, compressed (brotli or gzip) when the browser takes it and the answer is worth it
+const zip = { br: util.promisify(zlib.brotliCompress), gzip: util.promisify(zlib.gzip) };
+const ZIP_OPTIONS = { br: { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } }, gzip: {} };
+const encodingOf = (req) => { const a = String(req.headers['accept-encoding'] || ''); return /\bbr\b/.test(a) ? 'br' : /\bgzip\b/.test(a) ? 'gzip' : null; };
+const send = async (res, status, body, type, cache) => {
+  let data = Buffer.from(typeof body === 'string' ? body : JSON.stringify(body));
+  const headers = { 'Content-Type': type || 'application/json; charset=utf-8', 'Cache-Control': cache || 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding' };
+  const enc = data.length > 1024 && encodingOf(res.req);
+  if (enc) { data = await zip[enc](data, ZIP_OPTIONS[enc]); headers['Content-Encoding'] = enc; }
+  headers['Content-Length'] = data.length;
+  res.writeHead(status, headers);
+  res.end(data);
 };
 const readBody = (req) => new Promise((resolve, reject) => {
   let s = ''; req.on('data', (d) => { s += d; if (s.length > 1e6) { reject(new Error('too large')); req.destroy(); } });
@@ -46,54 +56,61 @@ const readBody = (req) => new Promise((resolve, reject) => {
 });
 const byNumber = (col) => 'length(' + col + '), ' + col;
 
-// every list the pages draw, in the shapes the screens use (site/data.js)
-async function bootstrap() {
-  const q = async (sql) => (await db.query(sql)).rows;
-  const [settings, clergy, ministries, families, members, links, services, feasts, events, funds, gifts, months, pledges, slots, signups, announcements, documents, media, books] = await Promise.all([
-    q('SELECT key, value FROM settings'),
-    q('SELECT id, name, role FROM clergy ORDER BY id'),
-    q('SELECT id, name, icon, lead, meets, area, member_count, servant_count FROM ministries'),
-    q('SELECT id, name, last_name, address, phone, since, district FROM families ORDER BY ' + byNumber('id')),
-    q("SELECT id, family_id, first_name, last_name, sex, role, to_char(born, 'YYYY-MM-DD') AS born, email, phone, status, to_char(joined, 'YYYY-MM-DD') AS joined, servant, district, giving FROM members ORDER BY position"),
-    q('SELECT member_id, ministry_id FROM member_ministries'),
-    q('SELECT id, title, day, starts, ends, place FROM services ORDER BY id'),
-    q("SELECT id, title, to_char(day, 'YYYY-MM-DD') AS day, kind FROM feasts ORDER BY day"),
-    q("SELECT e.id, e.title, to_char(e.starts_at, 'YYYY-MM-DD\"T\"HH24:MI') AS start, to_char(e.ends_at, 'YYYY-MM-DD\"T\"HH24:MI') AS \"end\", e.place, e.ministry_id, e.color, e.rsvp_count + (SELECT count(*) FROM rsvps r WHERE r.event_id = e.id AND r.answer = 'yes')::int AS rsvp FROM events e ORDER BY " + byNumber('e.id')),
-    q('SELECT id, name, goal, raised FROM funds'),
-    q("SELECT g.id, g.member_id, m.first_name || ' ' || m.last_name AS name, g.fund_id, g.amount::float AS amount, g.method, to_char(g.given_on, 'YYYY-MM-DD') AS date FROM gifts g JOIN members m ON m.id = g.member_id ORDER BY g.position"),
-    q('SELECT month, label, general, building, pantry FROM giving_months ORDER BY month'),
-    q("SELECT p.id, p.member_id, m.first_name || ' ' || m.last_name AS name, p.fund_id, p.amount, p.paid, p.frequency, p.status FROM pledges p JOIN members m ON m.id = p.member_id ORDER BY p.position"),
-    q("SELECT id, role, ministry_id, to_char(day, 'YYYY-MM-DD') AS day, starts, needed FROM serving_slots ORDER BY " + byNumber('id')),
-    q('SELECT slot_id, member_id FROM signups ORDER BY position'),
-    q("SELECT id, title, body, author, to_char(day, 'YYYY-MM-DD') AS day, status, audience FROM announcements ORDER BY " + byNumber('id')),
-    q("SELECT id, name, folder, size, to_char(modified, 'YYYY-MM-DD\"T\"HH24:MI') AS modified, owner, version FROM documents ORDER BY " + byNumber('id')),
-    q("SELECT id, title, kind, speaker, to_char(day, 'YYYY-MM-DD') AS day, duration FROM media ORDER BY " + byNumber('id')),
-    q('SELECT id, name, price, category, stock FROM bookstore_items ORDER BY ' + byNumber('id')),
-  ]);
-  const setting = (k) => (settings.find((s) => s.key === k) || {}).value || {};
-  const ministriesOf = {}; links.forEach((l) => { (ministriesOf[l.member_id] = ministriesOf[l.member_id] || []).push(l.ministry_id); });
-  const membersOf = {}; members.forEach((m) => { (membersOf[m.family_id] = membersOf[m.family_id] || []).push(m.id); });
-  const signed = {}; signups.forEach((s) => { (signed[s.slot_id] = signed[s.slot_id] || []).push(s.member_id); });
-  const me = setting('me'), first = members.find((m) => m.id === me.id) || members[0] || {};
-  return {
-    church: setting('church'),
-    clergy,
-    ministries: ministries.map((m) => ({ id: m.id, name: m.name, icon: m.icon, lead: m.lead, meets: m.meets, group: m.area, members: m.member_count, servants: m.servant_count })),
-    families: families.map((f) => ({ id: f.id, name: f.name, last: f.last_name, address: f.address, phone: f.phone, since: f.since, members: membersOf[f.id] || [], district: f.district })),
-    members: members.map((m) => ({ id: m.id, family: m.family_id, name: m.first_name + ' ' + m.last_name, first: m.first_name, last: m.last_name, sex: m.sex, role: m.role, born: m.born, email: m.email,
-      phone: m.phone, status: m.status, joined: m.joined, ministries: ministriesOf[m.id] || [], servant: m.servant, district: m.district, giving: m.giving })),
-    services: services.map((s) => ({ id: s.id, title: s.title, day: s.day, time: s.starts, end: s.ends, place: s.place })),
-    feasts: feasts.map((f) => ({ id: f.id, title: f.title, date: f.day, kind: f.kind })),
-    events: events.map((e) => ({ id: e.id, title: e.title, start: e.start, end: e.end, place: e.place, ministry: e.ministry_id, color: e.color, rsvp: e.rsvp })),
-    funds,
-    gifts: gifts.map((g) => ({ id: g.id, member: g.member_id, name: g.name, fund: g.fund_id, amount: g.amount, method: g.method, date: g.date })),
-    givingByMonth: months,
-    pledges: pledges.map((p) => ({ id: p.id, member: p.member_id, name: p.name, fund: p.fund_id, amount: p.amount, paid: p.paid, frequency: p.frequency, status: p.status })),
-    servingSlots: slots.map((s) => ({ id: s.id, role: s.role, ministry: s.ministry_id, date: s.day, time: s.starts, needed: s.needed, signed: signed[s.id] || [] })),
-    announcements: announcements.map((a) => ({ id: a.id, title: a.title, body: a.body, author: a.author, date: a.day, status: a.status, audience: a.audience })),
-    documents, media: media.map((m) => ({ id: m.id, title: m.title, kind: m.kind, speaker: m.speaker, date: m.day, duration: m.duration })), bookstore: books,
-    me: { id: first.id, name: (first.first_name || '') + ' ' + (first.last_name || ''), email: me.email, role: me.role },
-  };
+// every list the pages draw, by its name in site/data.js LISTS, in the shapes the screens use; each screen asks for its own
+const q = async (sql, params) => (await db.query(sql, params)).rows;
+const setting = async (k) => ((await q('SELECT value FROM settings WHERE key = $1', [k]))[0] || {}).value || {};
+const groupBy = (rows, key, val) => { const o = {}; rows.forEach((r) => { (o[r[key]] = o[r[key]] || []).push(r[val]); }); return o; };
+const LISTS = {
+  church: () => setting('church'),
+  me: async () => {
+    const me = await setting('me');
+    const m = (await q('SELECT id, first_name, last_name FROM members ORDER BY id = $1 DESC, position LIMIT 1', [me.id || '']))[0] || {};
+    return { id: m.id, name: (m.first_name || '') + ' ' + (m.last_name || ''), email: me.email, role: me.role };
+  },
+  clergy: () => q('SELECT id, name, role FROM clergy ORDER BY id'),
+  ministries: async () => (await q('SELECT id, name, icon, lead, meets, area, member_count, servant_count FROM ministries'))
+    .map((m) => ({ id: m.id, name: m.name, icon: m.icon, lead: m.lead, meets: m.meets, group: m.area, members: m.member_count, servants: m.servant_count })),
+  families: async () => {
+    const [families, members] = await Promise.all([q('SELECT id, name, last_name, address, phone, since, district FROM families ORDER BY ' + byNumber('id')), q('SELECT id, family_id FROM members ORDER BY position')]);
+    const membersOf = groupBy(members, 'family_id', 'id');
+    return families.map((f) => ({ id: f.id, name: f.name, last: f.last_name, address: f.address, phone: f.phone, since: f.since, members: membersOf[f.id] || [], district: f.district }));
+  },
+  members: async () => {
+    const [members, links] = await Promise.all([
+      q("SELECT id, family_id, first_name, last_name, sex, role, to_char(born, 'YYYY-MM-DD') AS born, email, phone, status, to_char(joined, 'YYYY-MM-DD') AS joined, servant, district, giving FROM members ORDER BY position"),
+      q('SELECT member_id, ministry_id FROM member_ministries'),
+    ]);
+    const ministriesOf = groupBy(links, 'member_id', 'ministry_id');
+    return members.map((m) => ({ id: m.id, family: m.family_id, name: m.first_name + ' ' + m.last_name, first: m.first_name, last: m.last_name, sex: m.sex, role: m.role, born: m.born, email: m.email,
+      phone: m.phone, status: m.status, joined: m.joined, ministries: ministriesOf[m.id] || [], servant: m.servant, district: m.district, giving: m.giving }));
+  },
+  services: async () => (await q('SELECT id, title, day, starts, ends, place FROM services ORDER BY id')).map((s) => ({ id: s.id, title: s.title, day: s.day, time: s.starts, end: s.ends, place: s.place })),
+  feasts: async () => (await q("SELECT id, title, to_char(day, 'YYYY-MM-DD') AS day, kind FROM feasts ORDER BY day")).map((f) => ({ id: f.id, title: f.title, date: f.day, kind: f.kind })),
+  events: async () => (await q("SELECT e.id, e.title, to_char(e.starts_at, 'YYYY-MM-DD\"T\"HH24:MI') AS start, to_char(e.ends_at, 'YYYY-MM-DD\"T\"HH24:MI') AS \"end\", e.place, e.ministry_id, e.color, e.rsvp_count + (SELECT count(*) FROM rsvps r WHERE r.event_id = e.id AND r.answer = 'yes')::int AS rsvp FROM events e ORDER BY " + byNumber('e.id')))
+    .map((e) => ({ id: e.id, title: e.title, start: e.start, end: e.end, place: e.place, ministry: e.ministry_id, color: e.color, rsvp: e.rsvp })),
+  funds: () => q('SELECT id, name, goal, raised FROM funds'),
+  gifts: async () => (await q("SELECT g.id, g.member_id, m.first_name || ' ' || m.last_name AS name, g.fund_id, g.amount::float AS amount, g.method, to_char(g.given_on, 'YYYY-MM-DD') AS date FROM gifts g JOIN members m ON m.id = g.member_id ORDER BY g.position"))
+    .map((g) => ({ id: g.id, member: g.member_id, name: g.name, fund: g.fund_id, amount: g.amount, method: g.method, date: g.date })),
+  givingByMonth: () => q('SELECT month, label, general, building, pantry FROM giving_months ORDER BY month'),
+  pledges: async () => (await q("SELECT p.id, p.member_id, m.first_name || ' ' || m.last_name AS name, p.fund_id, p.amount, p.paid, p.frequency, p.status FROM pledges p JOIN members m ON m.id = p.member_id ORDER BY p.position"))
+    .map((p) => ({ id: p.id, member: p.member_id, name: p.name, fund: p.fund_id, amount: p.amount, paid: p.paid, frequency: p.frequency, status: p.status })),
+  servingSlots: async () => {
+    const [slots, signups] = await Promise.all([q("SELECT id, role, ministry_id, to_char(day, 'YYYY-MM-DD') AS day, starts, needed FROM serving_slots ORDER BY " + byNumber('id')), q('SELECT slot_id, member_id FROM signups ORDER BY position')]);
+    const signed = groupBy(signups, 'slot_id', 'member_id');
+    return slots.map((s) => ({ id: s.id, role: s.role, ministry: s.ministry_id, date: s.day, time: s.starts, needed: s.needed, signed: signed[s.id] || [] }));
+  },
+  announcements: async () => (await q("SELECT id, title, body, author, to_char(day, 'YYYY-MM-DD') AS day, status, audience FROM announcements ORDER BY " + byNumber('id')))
+    .map((a) => ({ id: a.id, title: a.title, body: a.body, author: a.author, date: a.day, status: a.status, audience: a.audience })),
+  documents: () => q("SELECT id, name, folder, size, to_char(modified, 'YYYY-MM-DD\"T\"HH24:MI') AS modified, owner, version FROM documents ORDER BY " + byNumber('id')),
+  media: async () => (await q("SELECT id, title, kind, speaker, to_char(day, 'YYYY-MM-DD') AS day, duration FROM media ORDER BY " + byNumber('id')))
+    .map((m) => ({ id: m.id, title: m.title, kind: m.kind, speaker: m.speaker, date: m.day, duration: m.duration })),
+  bookstore: () => q('SELECT id, name, price, category, stock FROM bookstore_items ORDER BY ' + byNumber('id')),
+};
+// GET api/lists?names=members,families → { members: [...], families: [...] }, the lists read side by side
+async function lists(names) {
+  const out = {};
+  await Promise.all(names.map(async (n) => { out[n] = await LISTS[n](); }));
+  return out;
 }
 
 // ---- the writes
@@ -170,12 +187,45 @@ async function probeEngines() {
 let INDEX = null;
 const page = () => (INDEX = INDEX || fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8').split('{{PLENIX}}').join(BASE).split('{{VERSION}}').join(VERSION).split('{{ENGINES}}').join(ENGINES));
 
+// ---- the files of public/: read and compressed once (again when the file changes). A built script with a content hash in
+// its name (app.<hash>.js, screens/<name>.<hash>.js, the icons) never changes under that name: browsers keep it for a year.
+// The others (the pictures, the favicon) are checked each time and answer 304 while they are the same.
+const HASHED = /\.[0-9a-f]{10}\.js$/;
+const COMPRESS = /\.(js|css|html|svg|json)$/;
+const files = new Map();
+async function packed(file) {
+  const st = fs.statSync(file), stamp = st.mtimeMs + ':' + st.size, known = files.get(file);
+  if (known && known.stamp === stamp) return known;
+  const raw = fs.readFileSync(file), out = { stamp, raw, etag: '"' + st.size.toString(36) + '-' + Math.round(st.mtimeMs).toString(36) + '"' };
+  if (COMPRESS.test(file) && raw.length > 1024) {
+    [out.br, out.gzip] = await Promise.all([zip.br(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11 } }), zip.gzip(raw, { level: 9 })]);
+  }
+  files.set(file, out);
+  return out;
+}
+async function sendFile(req, res, file) {
+  const f = await packed(file), immutable = HASHED.test(file);
+  const headers = { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'X-Content-Type-Options': 'nosniff', Vary: 'Accept-Encoding',
+    'Cache-Control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache', ETag: f.etag };
+  if (!immutable && req.headers['if-none-match'] === f.etag) { res.writeHead(304, headers); return res.end(); }
+  const enc = encodingOf(req), data = (enc && f[enc]) || f.raw;
+  if (data !== f.raw) headers['Content-Encoding'] = enc;
+  headers['Content-Length'] = data.length;
+  res.writeHead(200, headers);
+  res.end(data);
+}
+
 async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname;
   try {
     if (p === '/healthz') { const n = (await db.query('SELECT (SELECT count(*) FROM members)::int AS members, (SELECT count(*) FROM gifts)::int AS gifts')).rows[0]; return send(res, 200, { ok: true, db: db.kind, plenix: BASE, ...n }); }
-    if (p === '/api/bootstrap' && req.method === 'GET') return send(res, 200, await bootstrap());
+    if (p === '/api/lists' && req.method === 'GET') {
+      const names = [...new Set((url.searchParams.get('names') || '').split(',').filter(Boolean))];
+      const unknown = names.filter((n) => !Object.prototype.hasOwnProperty.call(LISTS, n));
+      if (!names.length || unknown.length) return send(res, 400, { error: unknown.length ? 'No such list: ' + unknown.join(', ') : 'Name the lists: ?names=members,families' });
+      return send(res, 200, await lists(names));
+    }
     if (p === '/api/members' && req.method === 'POST') { const [s, b] = await createMember(await readBody(req)); return send(res, s, b); }
     let m;
     if ((m = /^\/api\/members\/(m\d+)$/.exec(p)) && req.method === 'PATCH') { const [s, b] = await updateMember(m[1], await readBody(req)); return send(res, s, b); }
@@ -187,15 +237,14 @@ async function handle(req, res) {
     }
     if (/^\/api\//.test(p)) return send(res, 404, { error: 'No such address' });
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Method not allowed' });
-    if (p === '/' || p === '/index.html') return send(res, 200, page(), TYPES['.html']);
-    // public/: app.js and assets/ (no way above the folder)
+    if (p === '/' || p === '/index.html') return send(res, 200, page(), TYPES['.html'], 'no-cache');
+    // public/: the built scripts and assets/ (no way above the folder)
     const file = path.join(PUBLIC, path.normalize(decodeURIComponent(p)).replace(/^([\\/]\.\.)+/, ''));
     if (!file.startsWith(PUBLIC + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) return send(res, 404, 'Not found', 'text/plain; charset=utf-8');
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' });
-    fs.createReadStream(file).pipe(res);
+    return sendFile(req, res, file);
   } catch (e) {
     console.error(p, e.message);
-    send(res, 500, { error: 'Something went wrong' });
+    if (!res.headersSent) send(res, 500, { error: 'Something went wrong' }).catch(() => res.end());
   }
 }
 
