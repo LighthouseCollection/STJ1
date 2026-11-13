@@ -56,7 +56,7 @@ export function SignInScreen({ screen, chrome }) {
     signup: <SignUpForm busy={busy} signIn={toSignIn}
       terms={<>I will keep members’ information private, as the <Link href="#/document/d4">servant guidelines</Link> ask</>}
       onSubmit={({ name }) => later(() => { toast.show('Thank you, ' + name.split(' ')[0] + '. The parish priest will approve your account.', { tone: 'success' }); go('signin'); })} />,
-    reset: <PasswordResetForm expires="30 minutes" busy={busy} signIn={toSignIn}
+    reset: <PasswordResetForm expires="30 minutes" busy={busy} signIn={toSignIn} strings={{ emailHint: 'The email of your ' + CHURCH.brand + ' account.' }}
       onRequest={() => undefined} onResend={() => toast.show('We sent the link again')}
       onReset={() => toast.show('Your password was changed', { tone: 'success' })} />,
     recovery: <AccountRecovery key={recovered ? 'done' : 'ask'} defaultStep={recovered ? 'done' : 'choose'} busy={busy} error={recoveryError || undefined}

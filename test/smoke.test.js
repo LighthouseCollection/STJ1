@@ -62,6 +62,15 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     const note = await page.$eval('#household-file-ar', (e) => ({ text: e.textContent, island: [...e.querySelectorAll('.plx-isolate')].map((i) => i.textContent), lang: e.getAttribute('lang') }));
     check('the Arabic note holds the household\'s file number as one Isolate', note.lang === 'ar' && /[\u0600-\u06FF]/.test(note.text) && note.island.length === 1 && note.island[0] === '20260001-01', JSON.stringify(note));
 
+    // the site's own sign-in screen (#8): the church's name where Plenix would be, and no "Plenix" anywhere on it
+    const brandName = (await api('bootstrap')).json.church.brand;
+    await open('#/sign-in');
+    const signin = await page.$eval('main', (m) => m.textContent);
+    await page.evaluate(() => [...document.querySelectorAll('button, a')].find((e) => /forgot/i.test(e.textContent)).click());
+    await page.waitForFunction(() => /Reset your password/.test(document.querySelector('main').textContent), { timeout: 15000 });
+    const reset = await page.$eval('main', (m) => m.textContent);
+    check('the sign-in screen and its reset step show the church name (' + brandName + ') and no "Plenix"', brandName === 'ST. JOHN COPTIC ORTHODOX CHURCH' && !/Plenix/.test(signin + reset) && reset.indexOf(brandName) >= 0, JSON.stringify({ brandName, plenix: /Plenix/.test(signin + reset) }));
+
     // the API: saves survive a reload; a reset brings the seed back
     const before = (await api('bootstrap')).json.members.length;
     const made = await api('members', 'POST', { first: 'Test', last: 'Visitor', status: 'visitor', district: 'East', address: { line1: '1 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
@@ -83,6 +92,6 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 7) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 8) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

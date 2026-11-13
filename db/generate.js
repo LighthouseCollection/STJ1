@@ -13,6 +13,7 @@ const iso = (y, m, d) => y + '-' + pad(m) + '-' + pad(d);
 const CHURCH = {
   name: 'St. John the Beloved Coptic Orthodox Church',
   short: 'St. John the Beloved',
+  brand: 'ST. JOHN COPTIC ORTHODOX CHURCH',   // the name the member chose for the header and the sign-in screen (#8), as written
   address: { line1: '1200 Cedar Grove Road', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' },
   phone: '(555) 010-0144',
   email: 'office@stjohn-beloved.example',
