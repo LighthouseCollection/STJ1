@@ -1,7 +1,9 @@
 /* St. John the Beloved test site · the parish data (site/data.js), read from the site's database through its API
-   (GET api/bootstrap) before the first screen draws: main.jsx awaits loadData(). The lists keep the same names and shapes
-   the screens use; changes are written back through save(). Every person, family, gift and address is made up (the seed,
-   db/generate.js). No sacrament records are kept anywhere in the site; people who serve are "servants". */
+   (GET api/lists?names=…). Each screen reads only the lists it uses: screens.js asks for them in one request when the
+   screen opens (build.js finds them from the names the screen imports here), and a list once read stays for the visit.
+   The lists keep the same names and shapes the screens use; changes are written back through save(). Every person,
+   family, gift and address is made up (the seed, db/generate.js). No sacrament records are kept anywhere in the site;
+   people who serve are "servants". */
 
 export const CHURCH = {};
 export const CLERGY = [];
@@ -23,22 +25,34 @@ export const MEDIA = [];
 export const BOOKSTORE = [];
 export const ME = {};
 
+// every list, by its name in the API (server.js LISTS); build.js reads this table
+export const LISTS = {
+  church: CHURCH, me: ME, clergy: CLERGY, ministries: MINISTRIES, families: FAMILIES, members: MEMBERS, services: SERVICES,
+  feasts: FEASTS, events: EVENTS, funds: FUNDS, gifts: GIFTS, pledges: PLEDGES, givingByMonth: GIVING_BY_MONTH,
+  servingSlots: SERVING_SLOTS, announcements: ANNOUNCEMENTS, documents: DOCUMENTS, media: MEDIA, bookstore: BOOKSTORE,
+};
+
 export const memberById = (id) => MEMBERS.find((m) => m.id === id);
 export const familyById = (id) => FAMILIES.find((f) => f.id === id);
 export const membersOf = (fid) => MEMBERS.filter((m) => m.family === fid);
 
-const fill = (list, rows) => { list.length = 0; (rows || []).forEach((r) => list.push(r)); };
+const fill = (into, rows) => {
+  if (Array.isArray(into)) { into.length = 0; (rows || []).forEach((r) => into.push(r)); } else Object.assign(into, rows);
+};
+const read = new Set(), reading = {};
 
-// reads every list from the API (relative to the page, so the site works under any address)
-export async function loadData() {
-  const res = await fetch('api/bootstrap', { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error('The parish data could not load (' + res.status + ')');
-  const d = await res.json();
-  Object.assign(CHURCH, d.church); Object.assign(ME, d.me);
-  fill(CLERGY, d.clergy); fill(MINISTRIES, d.ministries); fill(FAMILIES, d.families); fill(MEMBERS, d.members);
-  fill(SERVICES, d.services); fill(FEASTS, d.feasts); fill(EVENTS, d.events); fill(FUNDS, d.funds); fill(GIFTS, d.gifts);
-  fill(PLEDGES, d.pledges); fill(GIVING_BY_MONTH, d.givingByMonth); fill(SERVING_SLOTS, d.servingSlots);
-  fill(ANNOUNCEMENTS, d.announcements); fill(DOCUMENTS, d.documents); fill(MEDIA, d.media); fill(BOOKSTORE, d.bookstore);
+// reads the lists not read yet, all in one request (relative to the page, so the site works under any address);
+// a list already being read is not asked for again. A failed request can be made again.
+export function loadLists(names) {
+  const want = [...new Set(names)].filter((n) => !read.has(n) && !reading[n]);
+  if (want.length) {
+    const p = fetch('api/lists?names=' + want.join(','), { headers: { Accept: 'application/json' } })
+      .then((res) => { if (!res.ok) throw new Error('The parish data could not load (' + res.status + ')'); return res.json(); })
+      .then((d) => { want.forEach((n) => { fill(LISTS[n], d[n]); read.add(n); }); })
+      .finally(() => { want.forEach((n) => { delete reading[n]; }); });
+    want.forEach((n) => { reading[n] = p; });
+  }
+  return Promise.all(names.map((n) => reading[n])).then(() => {});
 }
 
 // writes a change to the database: save('members', 'POST', {...}) → the answer's JSON; throws with the server's words
