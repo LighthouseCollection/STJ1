@@ -68,8 +68,8 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     const signin = await page.$eval('main', (m) => m.textContent);
     await page.evaluate(() => [...document.querySelectorAll('button, a')].find((e) => /forgot/i.test(e.textContent)).click());
     await page.waitForFunction(() => /Reset your password/.test(document.querySelector('main').textContent), { timeout: 15000 });
-    const reset = await page.$eval('main', (m) => m.textContent);
-    check('the sign-in screen and its reset step show the church name (' + brandName + ') and no "Plenix"', brandName === 'ST. JOHN COPTIC ORTHODOX CHURCH' && !/Plenix/.test(signin + reset) && reset.indexOf(brandName) >= 0, JSON.stringify({ brandName, plenix: /Plenix/.test(signin + reset) }));
+    const resetText = await page.$eval('main', (m) => m.textContent);
+    check('the sign-in screen and its reset step show the church name (' + brandName + ') and no "Plenix"', brandName === 'ST. JOHN COPTIC ORTHODOX CHURCH' && !/Plenix/.test(signin + resetText) && resetText.indexOf(brandName) >= 0, JSON.stringify({ brandName, plenix: /Plenix/.test(signin + resetText) }));
 
     // the API: saves survive a reload; a reset brings the seed back
     const before = (await api('bootstrap')).json.members.length;
