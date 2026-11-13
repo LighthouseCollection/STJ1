@@ -34,6 +34,7 @@ import { DocumentScreen } from './screens/document.jsx';
 import { MediaScreen } from './screens/media.jsx';
 import { PhotoScreen } from './screens/photo.jsx';
 import { ReportsScreen } from './screens/reports.jsx';
+import { PrintFormScreen } from './screens/print-form.jsx';
 import { SearchScreen } from './screens/search.jsx';
 import { SettingsScreen } from './screens/settings.jsx';
 import { AccountScreen } from './screens/account.jsx';
@@ -72,6 +73,7 @@ const SCREENS = {
   'media': MediaScreen,
   'photo': PhotoScreen,
   'reports': ReportsScreen,
+  'print-form': PrintFormScreen,
   'search': SearchScreen,
   'settings': SettingsScreen,
   'account': AccountScreen,
