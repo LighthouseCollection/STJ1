@@ -1,8 +1,8 @@
 # St. John the Beloved Plenix test site — Project Plan
 
-**Written by Fr. Raphael Maher** · Template version 3.3 · Dispatch kit 3.3 · November 12, 2026
+**Written by Fr. Raphael Maher** · Template version 3.4.1 · Dispatch kit 3.4.1 · November 13, 2026
 
-Generated 2026-11-13 from the project intake by dispatch kit 3.3. This file is a generated snapshot of the process; the current state of the project is on the dashboard and GitHub. Do not edit it: change the intake (§0) or the project rules (`docs/project-rules.md`) instead.
+Generated 2026-11-13 from the project intake by dispatch kit 3.4.1. This file is a generated snapshot of the process; the current state of the project is on the dashboard and GitHub. Do not edit it: change the intake (§0) or the project rules (`docs/project-rules.md`) instead.
 
 > **Who works on a project.** One or more **members** (people), all with the same access and permissions, each with their own agent team. All teams work on the same GitHub repository, which is the record for everything. Each team has **one contact agent, its PM** (project manager agent). Members log requests and answer decisions on the **dashboard** (§8.3), directly on GitHub, or by talking to their PM.
 >
@@ -319,7 +319,7 @@ At every release, and whenever Backlog and Ready are both empty, the lead PM rev
 
 ### 5.1 The role registry
 
-Every registered role is declared in `agents.config.yaml`. **The intake is the source**: one `dispatch.py build` writes the registry, the launcher settings and the guard settings on the host as one generation, checks that it reads back, and switches it into use in one step; the host runs that one generation from then on, and a build that stops part-way leaves the previous one in use. To change a setting, a role, a runtime or a member, a member (with the control desk) records the decision, changes the intake (`dispatch.py set`), rebuilds, and runs `dispatch.py sync`, which copies the generated files into the checkout for a PR. The registry in the repository is the record of what the host runs; CI checks it (§9.2 check 11).
+Every registered role is declared in `agents.config.yaml`. **The intake is the source**: one `dispatch.py build` writes the registry, the launcher settings and the guard settings on the host as one generation, checks that it reads back, and switches it into use in one step; the host runs that one generation from then on, and a build that stops part-way leaves the previous one in use. To change a setting, a role, a runtime or a member, a member (with the control desk) records the decision, changes the intake (`dispatch.py set`), rebuilds, and runs `dispatch.py sync`, which copies the generated files into the checkout for a PR. The registry in the repository is the record of what the host runs; CI checks it (§9.2 check 11). An Existing project whose own CI or tools already read its own `agents.config.yaml`, `CLAUDE.md` or `AGENTS.md` keeps those files (intake `existing.keep`): the kit then writes its registry to `.agents/agents.config.yaml`, and the project's own instruction file points agents to `.agents/RULES.md`.
 
 The registry's shape (values come from the intake; documents never state them):
 
@@ -512,6 +512,7 @@ Four short workflow skills are written in Phase 0 into `.agents/skills/` (the ki
 | A PR is ready for review | Adds the label of every **applicable** PR review gate (Code Reviewer always; QA always in Library and Application; Design Critic and Accessibility for UI; Security for sensitive areas) and starts each one with the issue number the PR closes; they use the reserved slots. Gates that do not apply are recorded N/A with a reason |
 | An agent has finished | The agent ends itself |
 | An agent sits idle | The host's idle closer handles it: after `idle_exit_min` without working, the agent gets one nudge; if it is still idle after `idle_exit_min` more, it is closed, its item returns to Ready, and the closer comments on the issue. The PM adds the cause to `docs/lessons.md` when it recurs |
+| An agent stops without finishing | The idle closer finds an agent whose session ended without `agent.sh done` (for example, stopped for using more memory than `memory_gb`). It records why in the kit log, comments on the issue, and returns a builder's item to Ready. The PM starts it again, or splits the work when it ran out of memory |
 | A lane falls below `ready_min` | Refill from the master plan (§4.4) |
 | Backlog and Ready are empty | The lead PM runs a plan review (§4.6); then every agent stops |
 | Work matches no role | Role discovery (§5.9) |
@@ -525,7 +526,7 @@ If a member has to remind the PM to work while Ready items exist, coordination f
 The dashboard's Team view shows, from GitHub: each team's In-progress items and which agent label holds them, Ready depth per lane, and open `reminder` issues (target 0). Which sessions are running right now is shown on the host (`pm.sh status`), not on the dashboard. There is no summary document.
 
 **The kit log.** The host keeps one record of every problem the kit meets, what fixed it, and every change made to the kit or through it: `AGENT_HOME/log/KIT-LOG.md`, written from `kit-log.jsonl`. Each entry has an id, K-NNNN.
-- **Problems the kit records by itself:** guard blocks, refused pushes, launcher failures, PMs the watcher had to restart, GitHub queries that failed, agents the idle closer had to close, and failed builds, checks and launch tests of an enabled project. A problem met again while it is open is counted, not repeated. When the kit sees one of these problems gone, it closes it.
+- **Problems the kit records by itself:** guard blocks, refused pushes, launcher failures, PMs the watcher had to restart (with why, when the host knows), GitHub queries that failed, agents the idle closer had to close, agents that stopped without finishing, and failed builds, checks and launch tests of an enabled project. A problem met again while it is open is counted, not repeated. When the kit sees one of these problems gone, it closes it.
 - **Problems agents report:** an agent or PM that a kit tool stops from normal work records it with `agent.sh report "<what happened>"` and never works around it.
 - **Fixes:** a member records what fixed each problem with `dispatch.py log fix K-NNNN "<what was done>"`, which closes it. When no change was needed, the member says why.
 - **Changes the kit records by itself:** installs and upgrades, host setup, intake changes (`set`, with the old and new values), builds, syncs, stored secrets (never a value), enabling, disabling and restarting. A member records any other change with `dispatch.py log change`.
@@ -538,7 +539,7 @@ Every session runs as an interactive agent session in a terminal multiplexer on 
 
 ### 6.6 The dispatch kit
 
-This plan ships with the **dispatch kit**, which always carries the same version number as this template (3.3). The kit refuses to run if the two differ. A project does not rewrite it.
+This plan ships with the **dispatch kit**, which always carries the same version number as this template (3.4.1). The kit refuses to run if the two differ. A project does not rewrite it.
 
 | Part | What it does |
 |---|---|
@@ -901,6 +902,8 @@ Agents may also reach GitHub, the package registries, the published design speci
 Decisions are recorded in `decisions/`, one file per decision (so two decision PRs rarely touch the same file), with: id, date, area, who decided, the decision, why, options, status, what supersedes it, the check that enforces it, and for design decisions the **specification section it changed**.
 
 **Numbering.** D-0001 to D-0008 are the intake decisions and D-0009 to D-0015 the Foundation decisions. Every later decision, including those the kit writes when an intake answer changes, takes the next number after the highest on the default branch, never below D-0016. The lead PM keeps the numbering. If two PRs pick the same number, CI fails (§9.2 check 13) and the later PR renumbers.
+
+**A project with its own log.** An Existing project that already keeps a decision log in another place or format keeps it (intake `existing.decision_log`). The kit then writes no decision files: every decision, the intake's included, goes into that log in the project's own format, with its next free number.
 
 **Superseding.** A past decision is never rewritten; only its `status`, `superseded_by` and `check` may change. A full replacement sets `superseded_by: D-NNNN`. A partial replacement lists each part: `superseded_by: [{id: D-NNNN, scope: "what it replaces"}]`, and the old decision stays `active` for the rest.
 
