@@ -6,7 +6,8 @@
 <title>St. John the Beloved Coptic Orthodox Church</title>
 <!-- St. John the Beloved Coptic Orthodox Church: the Plenix test site, a church database and membership app. Every person
      in it is made up. It loads Plenix like any outside app: the four files of one release from the CDN ({{PLENIX}},
-     Plenix {{VERSION}}); the server fills in the address (PLENIX_BASE). -->
+     Plenix {{VERSION}}); the server fills in the address (PLENIX_BASE). build.js fills in the site's own scripts under
+     their hashed names (app.<hash>.js, the icons), which browsers keep for a year. -->
 <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
 <script src="{{PLENIX}}theme-boot.js"></script>
 <link rel="stylesheet" href="{{PLENIX}}fonts.css">
@@ -16,11 +17,11 @@
 <script src="{{PLENIX}}plenix.js"></script>
 <!-- the site's icons, registered so each draws from its own module (Plenix #557). Written by Plenix's
      tools/icons/site-icons.js from site/; it does nothing on a Plenix without registerIcons (0.73.0) -->
-<script src="assets/plenix-icons-st-john.js"></script>
+<script src="{{ICONS}}"></script>
 {{ENGINES}}
 </head>
 <body>
 <div id="root"></div>
-<script src="app.js"></script>
+<script src="{{APP}}"></script>
 </body>
 </html>

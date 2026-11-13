@@ -1,6 +1,7 @@
 /* St. John the Beloved test site · the smoke test (test/smoke.test.js): the site's own check, run in its CI and before a
    deploy. It starts the server (DATABASE_URL: the CI's throwaway PostgreSQL, or pglite:memory), then in Chrome opens every
-   page of site/pages.js: each must draw its main region with no page error, console error or failed request. Then the API:
+   page of site/pages.js: each must draw its main region with no page error, console error or failed request. Then the speed
+   rules (hashed, compressed, long-kept scripts; one data request per page) and the API:
    a new member is saved and is there after a reload, a sign-up and an RSVP save, and a reset brings the seed back.
    (The full Plenix tests, pages, keyboard, typography and the rest, run in the Plenix repository against this site.)
      npm test        CHROME_PATH picks the browser; PORT (8795) */
@@ -17,7 +18,7 @@ const BASE = 'http://127.0.0.1:' + process.env.PORT + '/';
 
 const text = fs.readFileSync(path.join(__dirname, '..', 'site', 'pages.js'), 'utf8');
 const PAGES = JSON.parse(text.slice(text.indexOf('= [') + 2).replace(/;\s*$/, ''));
-const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find((p) => fs.existsSync(p));
+const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe', (process.env.LOCALAPPDATA || '').replace(/\\/g, '/') + '/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/usr/bin/chromium'].find((p) => fs.existsSync(p));
 
 (async () => {
   const server = await start();
@@ -63,7 +64,7 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     check('the Arabic note holds the household\'s file number as one Isolate', note.lang === 'ar' && /[\u0600-\u06FF]/.test(note.text) && note.island.length === 1 && note.island[0] === '20260001-01', JSON.stringify(note));
 
     // the site's own sign-in screen (#8): the church's name where Plenix would be, and no "Plenix" anywhere on it
-    const brandName = (await api('bootstrap')).json.church.brand;
+    const brandName = (await api('lists?names=church')).json.church.brand;
     await open('#/sign-in');
     const signin = await page.$eval('main', (m) => m.textContent);
     await page.evaluate(() => [...document.querySelectorAll('button, a')].find((e) => /forgot/i.test(e.textContent)).click());
@@ -71,27 +72,46 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     const resetText = await page.$eval('main', (m) => m.textContent);
     check('the sign-in screen and its reset step show the church name (' + brandName + ') and no "Plenix"', brandName === 'ST. JOHN COPTIC ORTHODOX CHURCH' && !/Plenix/.test(signin + resetText) && resetText.indexOf(brandName) >= 0, JSON.stringify({ brandName, plenix: /Plenix/.test(signin + resetText) }));
 
+    // the speed rules (#26): the page is checked each time; the built scripts have hashed names, go out compressed and are kept
+    // for a year; a screen's code loads when it opens; a page asks for its data in one request, and never for every list
+    const index = await fetch(BASE);
+    const html = await index.text();
+    const scripts = [...html.matchAll(/<script src="((?:app|assets\/[^"]*)\.[0-9a-f]{10}\.js)"/g)].map((m) => m[1]);
+    check('the page is checked each time', /no-cache/.test(index.headers.get('cache-control')), index.headers.get('cache-control'));
+    const app = await fetch(BASE + scripts.find((s) => /^app\./.test(s)), { headers: { 'Accept-Encoding': 'br, gzip' } });
+    check('the built scripts have hashed names, are kept for a year and go out compressed', scripts.length === 2 && app.headers.get('cache-control') === 'public, max-age=31536000, immutable'
+      && /^(br|gzip)$/.test(app.headers.get('content-encoding') || ''), JSON.stringify({ scripts, cache: app.headers.get('cache-control'), encoding: app.headers.get('content-encoding') }));
+    const asked = [];
+    const listen = (r) => { const u = r.url(); if (/\/api\//.test(u) || /\/screens\//.test(u)) asked.push(u.replace(BASE, '')); };
+    page.on('request', listen);
+    await open('#/members');
+    page.off('request', listen);
+    const data = asked.filter((u) => /^api\//.test(u));
+    check('a page loads its own code and asks for its data in one request, not for every list', data.length === 1 && /^api\/lists\?names=/.test(data[0]) && !/gifts/.test(data[0])
+      && asked.some((u) => /^screens\/members\.[0-9a-f]{10}\.js$/.test(u)) && !asked.some((u) => /^screens\/gifts\./.test(u)), JSON.stringify(asked));
+    check('an unknown list is refused', (await api('lists?names=members,sacraments')).status === 400, '');
+
     // the API: saves survive a reload; a reset brings the seed back
-    const before = (await api('bootstrap')).json.members.length;
+    const before = (await api('lists?names=members')).json.members.length;
     const made = await api('members', 'POST', { first: 'Test', last: 'Visitor', status: 'visitor', district: 'East', address: { line1: '1 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
-    const after = (await api('bootstrap')).json.members;
+    const after = (await api('lists?names=members')).json.members;
     check('a new member is saved', made.status === 201 && after.length === before + 1 && after.some((m) => m.id === made.json.id && m.name === 'Test Visitor'), JSON.stringify(made));
     const edit = await api('members/' + made.json.id, 'PATCH', { phone: '(555) 010-9999' });
-    check('a member is changed', edit.status === 200 && (await api('bootstrap')).json.members.find((m) => m.id === made.json.id).phone === '(555) 010-9999', JSON.stringify(edit));
+    check('a member is changed', edit.status === 200 && (await api('lists?names=members')).json.members.find((m) => m.id === made.json.id).phone === '(555) 010-9999', JSON.stringify(edit));
     check('a bad member is refused', (await api('members', 'POST', { first: '' })).status === 400, '');
     const sign = await api('slots/sl5/signups', 'PUT', { members: ['m3', 'm4'] });
-    check('a sign-up is saved', sign.status === 200 && JSON.stringify((await api('bootstrap')).json.servingSlots.find((s) => s.id === 'sl5').signed) === '["m3","m4"]', JSON.stringify(sign));
-    const coming = (await api('bootstrap')).json.events.find((e) => e.id === 'e10').rsvp;
+    check('a sign-up is saved', sign.status === 200 && JSON.stringify((await api('lists?names=servingSlots')).json.servingSlots.find((s) => s.id === 'sl5').signed) === '["m3","m4"]', JSON.stringify(sign));
+    const coming = (await api('lists?names=events')).json.events.find((e) => e.id === 'e10').rsvp;
     const rsvp = await api('events/e10/rsvps', 'POST', { answer: 'yes' });
-    check('an RSVP is counted', rsvp.status === 201 && (await api('bootstrap')).json.events.find((e) => e.id === 'e10').rsvp === coming + 1, JSON.stringify(rsvp));
+    check('an RSVP is counted', rsvp.status === 201 && (await api('lists?names=events')).json.events.find((e) => e.id === 'e10').rsvp === coming + 1, JSON.stringify(rsvp));
     const reset = await api('reset', 'POST');
-    check('a reset brings the seed back', reset.status === 200 && (await api('bootstrap')).json.members.length === before, JSON.stringify(reset));
+    check('a reset brings the seed back', reset.status === 200 && (await api('lists?names=members')).json.members.length === before, JSON.stringify(reset));
     const health = (await (await fetch(BASE + 'healthz')).json());
     check('the health check answers', health.ok && health.members === before && health.gifts === 10000, JSON.stringify(health));
   } finally {
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 8) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 17) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

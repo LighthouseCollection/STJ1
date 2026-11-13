@@ -15,11 +15,17 @@ Every automatic browser test of Plenix runs here (owner, 2026-10-25). It has not
 
 | Part | Where | What |
 |---|---|---|
-| Pages | `site/` | 35 screens (`site/screens/`), routes in `site/pages.js`, the frame in `site/site.jsx`. `node build.js` compiles them to `public/app.js`. |
-| Server | `server/server.js` | Node 22 with one library (`pg`). It serves the page, the pictures and the JSON API (`/api/bootstrap`, saves, `/api/reset`, `/healthz`). It resets to the seed every night at 3:00 (New York time). |
+| Pages | `site/` | 35 screens (`site/screens/`), routes in `site/pages.js`, the frame in `site/site.jsx`. `node build.js` compiles the frame to `public/app.<hash>.js` and each screen to its own `public/screens/<name>.<hash>.js`, loaded when the screen opens (`site/screens.js`). |
+| Server | `server/server.js` | Node 22 with one library (`pg`). It serves the page, the pictures and the JSON API (`/api/lists?names=…`, saves, `/api/reset`, `/healthz`). It resets to the seed every night at 3:00 (New York time). |
 | Database | `db/` | PostgreSQL 16. Numbered migrations in `db/migrations/` (`node db/migrate.js`); the seed (`node db/seed.js`) comes from the fixed generator in `db/generate.js`. |
 | Tests | `test/smoke.test.js` | Every page in Chrome, plus the API's saves and the reset (`npm test`). CI runs it against a throwaway PostgreSQL. |
 | Server setup | `Dockerfile`, `docker-compose.yml`, `deploy/` | The app and PostgreSQL in Docker on the Plenix server (VM 130). Deploy with `bash deploy/deploy.sh`. |
+
+## Speed (issue #26)
+
+- **Cached code:** every built script has the hash of its content in its name. The server sends it compressed (brotli or gzip) with `Cache-Control: public, max-age=31536000, immutable`. The page itself (`index.html`) is `no-cache`, so a new build is picked up at once.
+- **Code per screen:** the frame (`app.<hash>.js`, about 33 KB) holds no screen. A screen's file loads when it first opens; the screens a person likely opens next (`NEXT` in `site/screens.js`) have their files fetched while the browser is idle (code only, never data).
+- **One data request per screen:** a screen asks for the lists it reads in one `GET /api/lists?names=…`, side by side with its file, never after it. `build.js` works out each screen's lists from the names it imports from `site/data.js`. A list once read stays for the visit; nothing loads the whole database.
 
 ## Running it on a computer
 
