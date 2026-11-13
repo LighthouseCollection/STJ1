@@ -42,6 +42,7 @@ const fill = (into, rows) => {
   if (Array.isArray(into)) { into.length = 0; (rows || []).forEach((r) => into.push(r)); } else Object.assign(into, rows);
 };
 const read = new Set(), reading = {}, refreshing = {}, seen = {}, at = {};
+let wrote = 0;   // counts saves: a refresh that started before a save may carry data from before it, so its answer is not used
 const text = (rows) => JSON.stringify(rows || null);
 // a list read less than this long ago is not read again when its screen opens again (window.StJohn.freshFor, in ms)
 const freshFor = () => (window.StJohn && window.StJohn.freshFor != null ? window.StJohn.freshFor : 5000);
@@ -67,9 +68,11 @@ export function refreshLists(names) {
   const want = [...new Set(names)].filter((n) => read.has(n) && !refreshing[n] && Date.now() - (at[n] || 0) >= freshFor());
   if (!want.length) return Promise.resolve(false);
   want.forEach((n) => { refreshing[n] = true; });
+  const started = wrote;
   return fetch('api/lists?names=' + want.join(','), { headers: { Accept: 'application/json' } })
     .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
     .then((d) => {
+      if (started !== wrote) return false;
       let changed = false;
       want.forEach((n) => { at[n] = Date.now(); const t = text(d[n]); if (t !== seen[n]) { seen[n] = t; fill(LISTS[n], d[n]); changed = true; } });
       return changed;
@@ -83,5 +86,8 @@ export async function save(where, method, body) {
   const res = await fetch('api/' + where, { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(body || {}) });
   const out = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(out.error || 'The change could not be saved (' + res.status + ')');
+  // the lists in memory may now be out of date: the next visit to any screen reads them again, however recently they were read
+  wrote++;
+  Object.keys(at).forEach((n) => { delete at[n]; });
   return out;
 }

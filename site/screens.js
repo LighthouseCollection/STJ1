@@ -41,20 +41,25 @@ export function loadScreen(name) {
 
 // a screen draws what it needs from the lists once, when its code first runs (module level), so new data means running its
 // code again (STJ.drop). The screen on view is swapped for the fresh one at once unless the person is typing or a dialog is
-// open (a swap would lose that); then, like every other screen, it is drawn fresh the next time it opens.
-const listeners = new Set();
+// open (a swap would lose that); it is then marked dirty and drawn fresh the next time it opens, even when the lists have not
+// changed again since. If the fresh code fails to run, the screen on view stays as it was and is also marked dirty.
+const listeners = new Set(), dirty = new Set();
 export const onRefreshed = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
 const busy = () => { const a = document.activeElement; return !!((a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)) || document.querySelector('[role="dialog"], dialog[open]')); };
 export function refreshScreen(name) {
   const s = STJ.screens[name];
   if (!s) return Promise.resolve(false);
   return refreshLists(STJ.coreLists.concat(s.lists)).then((changed) => {
-    if (!changed) return false;
-    const keep = busy();
-    STJ.drop();
-    Object.keys(ready).forEach((k) => { if (k !== name || !keep) delete ready[k]; });
-    Object.keys(opening).forEach((k) => { if (!ready[k]) delete opening[k]; });
-    if (!keep) ready[name] = STJ.require(s.module)[s.export];
+    if (!changed && !dirty.has(name)) return false;
+    let fresh = null;
+    if (!busy()) {
+      try { STJ.drop(); fresh = STJ.require(s.module)[s.export]; } catch (e) { fresh = null; }
+    } else STJ.drop();
+    if (changed) Object.keys(ready).forEach((k) => { if (k !== name) { delete ready[k]; dirty.delete(k); } });
+    Object.keys(opening).forEach((k) => { if (!ready[k] && k !== name) delete opening[k]; });
+    if (!fresh) { dirty.add(name); return false; }   // typing, a dialog, or a failure: the screen on view stays; it redraws on its next visit
+    dirty.delete(name);
+    ready[name] = fresh;
     listeners.forEach((fn) => fn());
     return true;
   });
