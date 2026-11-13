@@ -88,7 +88,9 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     // after it, so the Members visit is the one that shows the old count and then the new one.
     await open('#/members');
     await page.evaluate(() => { window.StJohn.freshFor = 0; });
-    await open('#/families');
+    // (moved by the hash, not by open(): open() reloads the page and so empties the memory this rule is about)
+    await page.evaluate(() => { location.hash = '#/families'; });
+    await page.waitForFunction(() => /households/i.test((document.querySelector('main') || { innerText: '' }).innerText), { timeout: 15000 });
     await page.waitForNetworkIdle({ idleTime: 600, timeout: 15000 });   // the Families visit's own refresh has answered
     const seeded = (await api('lists?names=members')).json.members.length;
     await api('members', 'POST', { first: 'Quiet', last: 'Refresh', sex: 'M', born: '1990-05-05', status: 'visitor', district: 'East', address: { line1: '2 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
