@@ -11,8 +11,8 @@ import {
   ImportDialog, ImportWizard, ManageColumnsDialog, PageContent, QuickFilter, RecordPage, SortPanel, TableSettings, Tag, TagList, ViewMenu,
   useCollectionView, useCommandBar, useToast,
 } from 'plenix-platform';
-import { MEMBERS, MINISTRIES, MEMBER_STATUS, familyById } from '../data.js';
-import { SitePage } from '../site.jsx';
+import { MEMBERS, MINISTRIES, MEMBER_STATUS, familyById, CHURCHCRM } from '../data.js';
+import { ChurchCrmNotice, SitePage } from '../site.jsx';
 // TableSettings is newer than the pinned Plenix (0.89.0): until the next release the grid is drawn without it
 function GridSettings({ children, ...props }) { return TableSettings ? <TableSettings {...props}>{children}</TableSettings> : children; }
 
@@ -101,6 +101,7 @@ export function MembersScreen({ screen, chrome }) {
   return (
     <SitePage chrome={chrome} page="workspace">
       <PageContent>
+        <ChurchCrmNotice status={CHURCHCRM} />
         <RecordPage.Header title="Members" description="Every member and visitor of the parish. Open a member for their profile, family and serving." />
         <CommandBar label="Members" count={shown + ' members'}
           actions={[

@@ -3,7 +3,7 @@
    ToolRail of the groups), the status bar, the command palette (Ctrl Shift P) and the site's shortcuts.
    A screen receives { screen, chrome } and draws either a page template, given chrome's header, sideNav and footer
    (<ListingPage {...chrome} …/>), or <SitePage chrome={chrome} page="…">…</SitePage> (an AppShell with the same chrome). */
-import { AppHeader, AppShell, Button, CommandPalette, NavList, NavPane, SearchField, StatusBar, ToolRail, useHotkey } from 'plenix-platform';
+import { AppHeader, AppShell, Banner, Button, CommandPalette, NavList, NavPane, SearchField, StatusBar, ToolRail, useHotkey } from 'plenix-platform';
 import { PAGES } from './pages.js';
 import { CHURCH, ME } from './data.js';
 const { useState, createContext, useContext } = React;
@@ -19,6 +19,13 @@ const GROUPS = [...new Set(NAV_PAGES.map((p) => p.group))];
 // an AppShell with the site's chrome: page is the kind of page (workspace, dashboard, settings, form, detail, master-detail, editor)
 export function SitePage({ chrome, page = 'workspace', panel, children, className }) {
   return <AppShell page={page} header={chrome.header} sideNav={chrome.sideNav} footer={chrome.footer} panel={panel} className={className}>{children}</AppShell>;
+}
+
+// the notice on the three pilot screens (Members, Household, Donations and pledges), given CHURCHCRM from data.js (read in the screen's one
+// data request): shown only when ChurchCRM is not configured, does not answer, or refuses the site's key; the screen then keeps its sample data
+export function ChurchCrmNotice({ status }) {
+  if (!status || !status.state || status.state === 'ok') return null;
+  return <Banner tone="warning" placement="pane" title="Showing sample data" data-churchcrm-state={status.state}>{status.message}</Banner>;
 }
 
 // the chrome for the current page: header, sideNav, footer

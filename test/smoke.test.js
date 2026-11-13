@@ -80,6 +80,14 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     const data = asked.filter((u) => /^api\//.test(u));
     check('a page loads its own code and asks for its data in one request, not for every list', data.length === 1 && /^api\/lists\?names=/.test(data[0]) && !/gifts/.test(data[0])
       && asked.some((u) => /^screens\/members\.[0-9a-f]{10}\.js$/.test(u)) && !asked.some((u) => /^screens\/gifts\./.test(u)), JSON.stringify(asked));
+    // the notice on the three pilot screens: with no ChurchCRM key set (as here) each says it shows sample data, and no other screen does
+    for (const [route, name] of [['#/members', 'Members'], ['#/family/f1', 'Household'], ['#/giving', 'Donations and pledges']]) {
+      await open(route);
+      const notice = await page.$$eval('[data-churchcrm-state]', (els) => els.map((e) => ({ state: e.getAttribute('data-churchcrm-state'), role: e.getAttribute('role'), text: e.textContent })));
+      check(name + ' tells the reader it shows sample data when ChurchCRM is not connected', notice.length === 1 && notice[0].state === 'not-configured' && notice[0].role === 'status' && /sample data/i.test(notice[0].text), JSON.stringify(notice));
+    }
+    await open('#/families');
+    check('a screen outside the pilot shows no ChurchCRM notice', (await page.$$('[data-churchcrm-state]')).length === 0, 'found one');
     check('an unknown list is refused', (await api('lists?names=members,sacraments')).status === 400, '');
 
     // the API: saves survive a reload; a reset brings the seed back

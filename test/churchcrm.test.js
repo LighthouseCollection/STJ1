@@ -62,3 +62,25 @@ test('status says whether ChurchCRM answered', async () => {
   const f = await fake(); const cc = createChurchCrm({ CHURCHCRM_URL: f.url, CHURCHCRM_API_KEY: KEY }, { log() {} });
   assert.deepStrictEqual(await cc.status(), { configured: true, ok: true }); f.s.close();
 });
+
+// the notice on the pilot screens reads cc.state() through the list "churchcrm": one state and the words to show, never the key or the address
+test('state: connected, not configured, refused key and no answer each give one state and one message', async () => {
+  const f = await fake();
+  const a = await createChurchCrm({ CHURCHCRM_URL: f.url, CHURCHCRM_API_KEY: KEY }, { log() {} }).state();
+  assert.deepStrictEqual(a, { state: 'ok' });
+  const none = await createChurchCrm({}, { log() {} }).state();
+  assert.strictEqual(none.state, 'not-configured'); assert.match(none.message, /sample data/i);
+  const bad = await createChurchCrm({ CHURCHCRM_URL: f.url, CHURCHCRM_API_KEY: 'wrong' }, { log() {} }).state();
+  assert.strictEqual(bad.state, 'bad-key'); assert.match(bad.message, /key/i);
+  const down = await createChurchCrm({ CHURCHCRM_URL: 'http://127.0.0.1:1', CHURCHCRM_API_KEY: KEY }, { log() {} }).state();
+  assert.strictEqual(down.state, 'unreachable'); assert.match(down.message, /did not answer/i);
+  const out = JSON.stringify([a, none, bad, down]);
+  assert.ok(!out.includes(KEY) && !out.includes(f.url) && !out.includes('wrong'), 'nothing of the key or the address');
+  f.s.close();
+});
+test('state is kept for 30 seconds, so a screen opening again does not call ChurchCRM again', async () => {
+  const f = await fake(); const cc = createChurchCrm({ CHURCHCRM_URL: f.url, CHURCHCRM_API_KEY: KEY }, { log() {} });
+  await cc.state(1000); await cc.state(20000); assert.strictEqual(f.seen.length, 1);
+  await cc.state(32000); assert.strictEqual(f.seen.length, 2);
+  f.s.close();
+});

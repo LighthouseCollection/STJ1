@@ -10,8 +10,8 @@ import {
   MenuItem, Metric, NumberInput, Notice, PageContent, Select, SplitButton, Stack, Text, WaterfallChart, formatCurrency,
   formatNumber, useToast, usePrint,
 } from 'plenix-platform';
-import { FUNDS, GIFTS, GIVING_BY_MONTH, MEMBERS, PLEDGES, memberById } from '../data.js';
-import { SitePage } from '../site.jsx';
+import { FUNDS, GIFTS, GIVING_BY_MONTH, MEMBERS, PLEDGES, memberById, CHURCHCRM } from '../data.js';
+import { ChurchCrmNotice, SitePage } from '../site.jsx';
 const { useState, useMemo } = React;
 
 const usd = (n) => formatCurrency(n, 'USD');
@@ -135,6 +135,7 @@ export function GivingScreen({ chrome }) {
   return (
     <SitePage chrome={chrome} page="dashboard">
       <PageContent>
+        <ChurchCrmNotice status={CHURCHCRM} />
         <Stack gap="section">
           <Inline justify="between" align="start" wrap>
             <Stack gap="xs">
