@@ -42,3 +42,14 @@ jobs:
         run: node db/seed.js
       - name: Smoke test
         run: node test/smoke.test.js
+      - name: Screenshot plan
+        run: node test/screenshots.plan.test.js
+      - name: Screenshots (1440px and 320px)
+        run: node test/screenshots.js
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          if-no-files-found: error
+          retention-days: 14
