@@ -912,7 +912,7 @@ Decisions are recorded in `decisions/`, one file per decision (so two decision P
 |---|---|---|
 | D-0001 | Mode, project type, name, prefix (answering the intake authorizes Phase 0) | `Existing` / `Application` / `St. John the Beloved Plenix test site` / `stj` |
 | D-0002 | Design system and its published specification (**locked**) | `Plenix` at `https://design-system.lighthouseway.org/`, version `0.89.0` |
-| D-0003 | Repository, and for Existing the import source and cutover status | `LighthouseCollection/STJ1`. Imported from STJ1 on VM 131 (folder /home/cc/stj1, PM "STJ1 - PM"); old team stopped: not yet (cutover). |
+| D-0016 (supersedes D-0003) | Repository, and for Existing the import source and cutover status | `LighthouseCollection/STJ1`. Imported from STJ1 on VM 131 (folder /home/cc/stj1, PM "STJ1 - PM"); old team stopped: yes. |
 | D-0004 | Hosting and environments | `production https://stjohn.lighthouseway.org/` |
 | D-0005 | Merge rights | `PR-only` |
 | D-0006 | Members and teams | `Fr. Raphael Maher (@LighthouseCollection, team core)` |
