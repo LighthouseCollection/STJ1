@@ -40,6 +40,15 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
       check('page ' + p.id, !errs.length, errs.slice(0, 3).join(' | '));
     }
 
+    // The navigation pane (#9): each of the eight group headings carries its own icon, open or shut (the chevron stays).
+    await page.goto('about:blank');
+    await page.goto(BASE + '#/dashboard', { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.waitForSelector('.plx-nav-list__group', { timeout: 15000 });
+    const heads = await page.$$eval('.plx-nav-list__group .plx-collapsible-section__toggle', (a) => a.map((b) => ({ title: b.textContent.trim(), icon: !!b.querySelector('.plx-collapsible-section__icon svg'), chevron: !!b.querySelector('.plx-collapsible-section__chevron svg'), open: b.getAttribute('aria-expanded') === 'true' })));
+    const want = ['Parish', 'People', 'Serving', 'Worship', 'Giving', 'Communication', 'Library', 'Administration'];
+    check('the navigation pane has the eight group headings', JSON.stringify(heads.map((h) => h.title)) === JSON.stringify(want), JSON.stringify(heads.map((h) => h.title)));
+    check('each group heading carries an icon and keeps its chevron, open or shut', heads.length === 8 && heads.every((h) => h.icon && h.chevron) && heads.some((h) => h.open) && heads.some((h) => !h.open), JSON.stringify(heads));
+
     // Plenix parts the screens added for the Plenix coverage test (#338): the servants' vote (VoteTally) and the Arabic file number (Isolate).
     // Each is first looked for where it is not drawn, so the check can see an absence; then where it is.
     const open = async (hash) => { await page.goto('about:blank'); await page.goto(BASE + hash, { waitUntil: 'networkidle0', timeout: 60000 }); await page.waitForSelector('main', { timeout: 15000 }); };
@@ -83,6 +92,6 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 7) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 9) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
