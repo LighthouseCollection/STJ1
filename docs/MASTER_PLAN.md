@@ -41,7 +41,7 @@ Outcomes are inferred from the intake, the open issues and the repository (first
 | E7 ChurchCRM pilot | O5 | server, site | M2 | Waits for a member's answer on #10 |
 
 ## 6. Lanes and owners
-From `agents.config.yaml`: team `core`, 4 slots (2 reserved for PR review gates), `ready_min` 3.
+From `agents.config.yaml`: team `core`; slots and the Ready buffer are settings there, not repeated here.
 
 | Lane | Role |
 |---|---|

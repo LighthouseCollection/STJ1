@@ -1,0 +1,77 @@
+# Required checks of plan section 9 (gate G0). The smoke test is in ci.yml. Three jobs are meant to be required on main
+# (see docs/ci-checks.md): "Design and code checks", "Process checks" and "Gate verdicts".
+#
+# Rules from the lessons: no job here cancels runs in progress, so a required check is never blocked by its own
+# cancelled run (A-02); every step runs under bash with pipefail (A-03); each check has tests with a deliberate fault
+# (A-27) that run before the check itself.
+name: Required checks
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # GitHub's "bash" shell is `bash -eo pipefail`: a failing command on the left of a pipe fails the step (A-03)
+    shell: bash
+
+jobs:
+  design:
+    name: Design and code checks
+    if: github.event_name != 'pull_request_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 -m pip install --quiet pyyaml==6.0.2
+      - name: Self-test of the checks (each fault must fail)
+        run: python3 -m unittest discover -s ci -v
+      - name: Plan 9.1 checks 1, 3 and 9
+        run: python3 ci/checks.py design
+
+  process:
+    name: Process checks
+    if: github.event_name != 'pull_request_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 -m pip install --quiet pyyaml==6.0.2
+      - name: Self-test of the checks (each fault must fail)
+        run: python3 -m unittest discover -s ci -v
+      - name: Plan 9.2 checks 11, 12, 13 and 14
+        run: python3 ci/checks.py process
+
+  gate:
+    name: Gate verdicts
+    if: github.event_name == 'pull_request' || github.event_name == 'pull_request_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      # The gate script comes from the base branch, never from the PR, so a PR cannot change the rule that judges it.
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - name: The gate script exists on the base branch
+        run: |
+          if [ ! -f ci/gate.py ]; then
+            echo "ci/gate.py is not on the base branch yet. This is the bootstrap PR: a member merges it, then makes the check required."
+            exit 1
+          fi
+      - run: python3 -m pip install --quiet pyyaml==6.0.2
+      - name: Plan 9.2 check 15
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 ci/gate.py

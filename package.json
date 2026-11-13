@@ -9,7 +9,8 @@
     "start": "node server/server.js",
     "migrate": "node db/migrate.js",
     "seed": "node db/seed.js",
-    "test": "node test/smoke.test.js"
+    "test": "node test/smoke.test.js",
+    "test:ci": "python3 -m unittest discover -s ci"
   },
   "engines": { "node": ">=22" },
   "dependencies": {
