@@ -82,6 +82,28 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
       && asked.some((u) => /^screens\/members\.[0-9a-f]{10}\.js$/.test(u)) && !asked.some((u) => /^screens\/gifts\./.test(u)), JSON.stringify(asked));
     check('an unknown list is refused', (await api('lists?names=members,sacraments')).status === 400, '');
 
+    // rule 4 (#26): a screen seen before draws at once from memory, then its lists are read again in the background and the
+    // screen is drawn again when the server's answer differs (here a member added elsewhere, through the API)
+    await open('#/members');
+    await page.evaluate(() => { window.StJohn.freshFor = 0; });
+    const seeded = (await api('lists?names=members')).json.members.length;
+    await api('members', 'POST', { first: 'Quiet', last: 'Refresh', status: 'visitor', district: 'East', address: { line1: '2 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
+    const refreshed = [];
+    const watch = (r) => { if (/api\/lists/.test(r.url())) refreshed.push(r.url().replace(BASE, '')); };
+    page.on('request', watch);
+    await page.evaluate(() => { location.hash = '#/families'; });
+    await page.waitForFunction(() => /households/i.test((document.querySelector('main') || { innerText: '' }).innerText), { timeout: 15000 });
+    await page.evaluate(() => { location.hash = '#/members'; });
+    const atOnce = await page.evaluate((n) => new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const m = document.querySelector('main'), t = m ? m.innerText : '';
+      ok({ drawn: t.indexOf(n + ' members') >= 0, text: t.slice(0, 80) });
+    }))), String(seeded));
+    check('a screen seen before draws at once from memory, with the old count, before the refresh answers', atOnce.drawn, JSON.stringify(atOnce));
+    const now = await page.waitForFunction((n) => (document.querySelector('main') || { innerText: '' }).innerText.indexOf(n + ' members') >= 0, { timeout: 15000 }, String(seeded + 1)).then(() => true, () => false);
+    page.off('request', watch);
+    check('the same screen then refreshes quietly: one background read of its lists, the new member counted', now && refreshed.filter((u) => /members/.test(u)).length === 1, JSON.stringify({ now, refreshed }));
+    await api('reset', 'POST');
+
     // the API: saves survive a reload; a reset brings the seed back
     const before = (await api('lists?names=members')).json.members.length;
     const made = await api('members', 'POST', { first: 'Test', last: 'Visitor', status: 'visitor', district: 'East', address: { line1: '1 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
@@ -103,6 +125,6 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 16) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 18) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

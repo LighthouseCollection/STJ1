@@ -6,7 +6,7 @@
    frame shows a Spinner in its place. */
 import { Button, DirectionProvider, EmptyState, LocaleProvider, PageContent, Spinner, ToastProvider, useScreenLocation } from 'plenix-platform';
 import { SiteContext, SiteCommands, SitePage, useChrome } from './site.jsx';
-import { loadScreen, match, prefetchNext, readyScreen } from './screens.js';
+import { loadScreen, match, onRefreshed, prefetchNext, readyScreen, refreshScreen } from './screens.js';
 const { useState } = React;
 
 // a screen not loaded yet: the frame with a Spinner in its place, or, when it could not load, the error with Try again
@@ -40,6 +40,8 @@ function Site() {
     loadScreen(page.screen).then(() => { if (live) setLoaded((n) => n + 1); }, (e) => { if (live) setFailed(e); });
     return () => { live = false; };
   }, [page.screen, !!Screen, attempt]);
+  React.useEffect(() => onRefreshed(() => setLoaded((n) => n + 1)), []);
+  React.useEffect(() => { if (Screen) refreshScreen(page.screen); }, [page.screen, params.id, !!Screen]);   // seen before: drawn at once, read again quietly
   const screen = Object.assign({}, loc, { page, id: params.id, navigate });
   const frame = page.chrome === false ? { header: null, sideNav: null, footer: null } : chrome;
   return (

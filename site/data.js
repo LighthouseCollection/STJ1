@@ -1,6 +1,8 @@
 /* St. John the Beloved test site · the parish data (site/data.js), read from the site's database through its API
    (GET api/lists?names=…). Each screen reads only the lists it uses: screens.js asks for them in one request when the
-   screen opens (build.js finds them from the names the screen imports here), and a list once read stays for the visit.
+   screen opens (build.js finds them from the names the screen imports here). A list once read stays in memory for the
+   visit and shows at once when its screen opens again; refreshLists() then reads it again quietly in the background and
+   says whether anything changed (screens.js refreshScreen draws the screen again from the new data).
    The lists keep the same names and shapes the screens use; changes are written back through save(). Every person,
    family, gift and address is made up (the seed, db/generate.js). No sacrament records are kept anywhere in the site;
    people who serve are "servants". */
@@ -39,7 +41,10 @@ export const membersOf = (fid) => MEMBERS.filter((m) => m.family === fid);
 const fill = (into, rows) => {
   if (Array.isArray(into)) { into.length = 0; (rows || []).forEach((r) => into.push(r)); } else Object.assign(into, rows);
 };
-const read = new Set(), reading = {};
+const read = new Set(), reading = {}, refreshing = {}, seen = {}, at = {};
+const text = (rows) => JSON.stringify(rows || null);
+// a list read less than this long ago is not read again when its screen opens again (window.StJohn.freshFor, in ms)
+const freshFor = () => (window.StJohn && window.StJohn.freshFor != null ? window.StJohn.freshFor : 5000);
 
 // reads the lists not read yet, all in one request (relative to the page, so the site works under any address);
 // a list already being read is not asked for again. A failed request can be made again.
@@ -48,11 +53,29 @@ export function loadLists(names) {
   if (want.length) {
     const p = fetch('api/lists?names=' + want.join(','), { headers: { Accept: 'application/json' } })
       .then((res) => { if (!res.ok) throw new Error('The parish data could not load (' + res.status + ')'); return res.json(); })
-      .then((d) => { want.forEach((n) => { fill(LISTS[n], d[n]); read.add(n); }); })
+      .then((d) => { want.forEach((n) => { fill(LISTS[n], d[n]); seen[n] = text(d[n]); at[n] = Date.now(); read.add(n); }); })
       .finally(() => { want.forEach((n) => { delete reading[n]; }); });
     want.forEach((n) => { reading[n] = p; });
   }
   return Promise.all(names.map((n) => reading[n])).then(() => {});
+}
+
+// reads again, in one request and without showing anything, the lists already read and not read just now; a list whose
+// answer differs from the last one is filled in again. → true when any list changed. Memory only; a failure is left alone
+// (the data on screen stays, the next visit asks again).
+export function refreshLists(names) {
+  const want = [...new Set(names)].filter((n) => read.has(n) && !refreshing[n] && Date.now() - (at[n] || 0) >= freshFor());
+  if (!want.length) return Promise.resolve(false);
+  want.forEach((n) => { refreshing[n] = true; });
+  return fetch('api/lists?names=' + want.join(','), { headers: { Accept: 'application/json' } })
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+    .then((d) => {
+      let changed = false;
+      want.forEach((n) => { at[n] = Date.now(); const t = text(d[n]); if (t !== seen[n]) { seen[n] = t; fill(LISTS[n], d[n]); changed = true; } });
+      return changed;
+    })
+    .catch(() => false)
+    .finally(() => { want.forEach((n) => { delete refreshing[n]; }); });
 }
 
 // writes a change to the database: save('members', 'POST', {...}) → the answer's JSON; throws with the server's words
