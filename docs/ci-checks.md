@@ -32,3 +32,9 @@ A verdict is a PR review or PR comment whose first line names the gate and says 
 `at head <sha>` (7 or more characters), for example `**QA gate: PASS** at head 9185e81`. A new push makes earlier verdicts
 stale. The issue the PR closes must record G1-G4 as PASS or N/A (one comment `G1-G4: N/A (reason)` is enough). After a
 verdict arrives, the job re-runs on its own (review events); after an issue comment, re-run the job.
+
+The latest record per gate wins, with PR reviews and PR comments merged and sorted by time. A bare `N/A` (no reason after
+the head) fails. On the issue, the verdict must come right after the gate id (`G3: PASS`, `G1-G4: N/A (reason)`); a later
+`FAIL` or any other word fails that gate. **Limit:** the check cannot tell who wrote a verdict, because every agent and
+member comments through one shared GitHub identity. Any comment in the right format counts, so branch protection and member
+review remain the real control.

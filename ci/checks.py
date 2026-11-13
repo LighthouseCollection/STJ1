@@ -128,6 +128,10 @@ def workflows(root):
         text = read(root, rel); y = yaml.safe_load(text)
         if re.search(r'cancel-in-progress\s*:\s*(?!false\b)\S', text): problems.append(f'A-02: {rel} sets cancel-in-progress (a required check must never be cancelled)')
         if ((y.get('defaults') or {}).get('run') or {}).get('shell') != 'bash': problems.append(f'A-03: {rel} must set defaults.run.shell: bash (that shell runs with pipefail)')
+        for job, spec in (y.get('jobs') or {}).items():
+            if ((spec.get('defaults') or {}).get('run') or {}).get('shell', 'bash') != 'bash': problems.append(f'A-03: {rel} job {job} overrides the shell (must stay bash)')
+            for i, step in enumerate(spec.get('steps') or []):
+                if step.get('shell', 'bash') != 'bash': problems.append(f'A-03: {rel} job {job} step {i + 1} sets shell: {step["shell"]} (must be bash, which runs with pipefail)')
     return problems
 
 def process(root): return registry(root) + settings_in_prose(root) + decisions(root) + instruction_drift(root) + workflows(root)

@@ -57,11 +57,14 @@ class Workflows(Repo):
     def test_clean_passes(self): self.assertEqual(checks.workflows(self.tmp), [])
     def test_cancel_in_progress_fails(self):
         self.edit('.github/workflows/checks.yml', lambda s: s.replace('jobs:', 'concurrency:\n  group: x\n  cancel-in-progress: true\njobs:', 1)); self.assertTrue(any('A-02' in p for p in checks.workflows(self.tmp)))
+    def test_step_level_shell_sh_fails(self):
+        self.edit('.github/workflows/ci.yml', lambda s: s.replace('    steps:\n', '    steps:\n      - shell: sh\n        run: echo hi\n', 1)); self.assertTrue(any('A-03' in p for p in checks.workflows(self.tmp)))
     def test_missing_pipefail_shell_fails(self):
         self.edit('.github/workflows/ci.yml', lambda s: s.replace('    shell: bash', '    shell: sh')); self.assertTrue(any('A-03' in p for p in checks.workflows(self.tmp)))
 
 CFG = yaml.safe_load(open(os.path.join(ROOT, 'agents.config.yaml'), encoding='utf-8'))
-def review(first, sha=SHA): return {'body': first + '\n\nmore', 'commit_id': sha}
+def review(first, sha=SHA, at=None): return {'body': first + '\n\nmore', 'commit_id': sha, 'submitted_at': at}
+def comment(body, at=None): return {'body': body, 'created_at': at}
 OK = [review('**QA gate: PASS** at head `%s` (PR #1)' % SHA[:7]), review('**Code Reviewer gate G5a: PASS** at head `%s`' % SHA[:7])]
 ISSUE = [{'body': 'G1-G4: N/A (small build issue)'}]
 BODY = 'Closes #35'
@@ -80,6 +83,28 @@ class Gate(unittest.TestCase):
         self.assertEqual(self.run_gate(reviews=[review('**QA gate: N/A** at head `%s`, no behavior changed' % SHA[:7]), OK[1]]), [])
     def test_bare_na_fails(self):
         self.assertTrue(self.run_gate(reviews=[review('QA gate: N/A'), OK[1]]))
+    def test_bare_na_with_head_fails(self):
+        self.assertTrue(any('reason' in p for p in self.run_gate(reviews=[review('QA gate: N/A at head `%s`' % SHA[:7]), OK[1]])))
+        self.assertTrue(any('reason' in p for p in self.run_gate(reviews=[review('**QA gate: N/A** at head `%s`.' % SHA[:7]), OK[1]])))
+    def test_review_fail_after_comment_pass_fails(self):
+        rv = [review('**QA gate: FAIL** at head `%s`' % SHA[:7], at='2026-01-02T00:00:00Z'), OK[1]]
+        cm = [comment('**QA gate: PASS** at head `%s`' % SHA[:7], at='2026-01-01T00:00:00Z')]
+        self.assertTrue(any('FAIL' in p for p in self.run_gate(reviews=rv, comments=cm)))
+    def test_comment_pass_after_review_fail_passes(self):
+        rv = [review('**QA gate: FAIL** at head `%s`' % SHA[:7], at='2026-01-01T00:00:00Z'), OK[1]]
+        cm = [comment('**QA gate: PASS** at head `%s`' % SHA[:7], at='2026-01-02T00:00:00Z')]
+        self.assertEqual(self.run_gate(reviews=rv, comments=cm), [])
+    def test_issue_fail_line_fails(self):
+        self.assertTrue(self.run_gate(issue=[{'body': 'G1-G4: FAIL, was PASS before'}]))
+    def test_issue_later_fail_supersedes_earlier_pass(self):
+        iss = [comment('G1-G4: N/A (small build)', '2026-01-01T00:00:00Z'), comment('G3: FAIL', '2026-01-02T00:00:00Z')]
+        self.assertTrue(any('G3' in p for p in self.run_gate(issue=iss)))
+    def test_issue_later_pass_supersedes_earlier_fail(self):
+        iss = [comment('G3: FAIL', '2026-01-01T00:00:00Z'), comment('G1-G4: PASS', '2026-01-02T00:00:00Z')]
+        self.assertEqual(self.run_gate(issue=iss), [])
+    def test_issue_verdict_must_follow_gate_id(self):
+        self.assertTrue(self.run_gate(issue=[{'body': 'G1 G2 G3 G4 are still open, PASS expected later'}]))
+        self.assertTrue(self.run_gate(issue=[{'body': 'G1-G4: maybe'}]))
     def test_missing_issue_record_fails(self): self.assertTrue(any('G1' in p for p in self.run_gate(issue=[{'body': 'claiming'}])))
     def test_each_gate_listed_individually(self):
         self.assertEqual(self.run_gate(issue=[{'body': 'G1: N/A\nG2: N/A\nG3: PASS\nG4: PASS'}]), [])
