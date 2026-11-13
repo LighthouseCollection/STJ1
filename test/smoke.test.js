@@ -103,7 +103,8 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     page.on('request', hold);
     await page.evaluate(() => { location.hash = '#/members'; });
     const atOnce = await page.waitForFunction((n) => (document.querySelector('main') || { innerText: '' }).innerText.indexOf(n + ' members') >= 0, { timeout: 1200 }, String(seeded)).then(() => true, () => false);
-    check('a screen seen before draws at once from memory, with the old count, before the refresh answers', atOnce, JSON.stringify({ seeded, refreshed }));
+    const shownNow = atOnce ? '' : await page.evaluate(() => ((document.querySelector('main') || { innerText: '' }).innerText || '').replace(/\s+/g, ' ').slice(0, 160));
+    check('a screen seen before draws at once from memory, with the old count, before the refresh answers', atOnce, JSON.stringify({ seeded, refreshed, shownNow }));
     const now = await page.waitForFunction((n) => (document.querySelector('main') || { innerText: '' }).innerText.indexOf(n + ' members') >= 0, { timeout: 15000 }, String(seeded + 1)).then(() => true, () => false);
     page.off('request', hold);
     await page.setRequestInterception(false);
