@@ -87,13 +87,16 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     // visit comes first and settles, because it refreshes the members list too (members is a core list); the member is added
     // after it, so the Members visit is the one that shows the old count and then the new one.
     await open('#/members');
+    await page.waitForFunction(() => /\d+ members/.test((document.querySelector('main') || { innerText: '' }).innerText), { timeout: 15000 });
+    await page.waitForNetworkIdle({ idleTime: 600, timeout: 15000 });   // the saved view's filter has been applied
+    const countOf = () => page.evaluate(() => { const m = /(\d+) members/.exec((document.querySelector('main') || { innerText: '' }).innerText); return m ? Number(m[1]) : -1; });
+    const seeded = await countOf();   // the saved view's count (active members of the North and East districts)
     await page.evaluate(() => { window.StJohn.freshFor = 0; });
     // (moved by the hash, not by open(): open() reloads the page and so empties the memory this rule is about)
     await page.evaluate(() => { location.hash = '#/families'; });
     await page.waitForFunction(() => /households/i.test((document.querySelector('main') || { innerText: '' }).innerText), { timeout: 15000 });
     await page.waitForNetworkIdle({ idleTime: 600, timeout: 15000 });   // the Families visit's own refresh has answered
-    const seeded = (await api('lists?names=members')).json.members.length;
-    await api('members', 'POST', { first: 'Quiet', last: 'Refresh', sex: 'M', born: '1990-05-05', status: 'visitor', district: 'East', address: { line1: '2 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
+    await api('members', 'POST', { first: 'Quiet', last: 'Refresh', sex: 'M', born: '1990-05-05', status: 'active', district: 'East', address: { line1: '2 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
     const refreshed = [];
     const watch = (r) => { if (/api\/lists/.test(r.url())) refreshed.push(r.url().replace(BASE, '')); };
     page.on('request', watch);
