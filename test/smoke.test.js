@@ -89,6 +89,7 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await open('#/members');
     await page.evaluate(() => { window.StJohn.freshFor = 0; });
     await open('#/families');
+    await page.waitForNetworkIdle({ idleTime: 600, timeout: 15000 });   // the Families visit's own refresh has answered
     const seeded = (await api('lists?names=members')).json.members.length;
     await api('members', 'POST', { first: 'Quiet', last: 'Refresh', sex: 'M', born: '1990-05-05', status: 'visitor', district: 'East', address: { line1: '2 Test Lane', city: 'Maple Hollow', region: 'NJ', postal: '07999', country: 'US' } });
     const refreshed = [];
