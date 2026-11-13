@@ -2,19 +2,19 @@
    page (general, people, giving, roles, notifications, appearance, security, audit) in a SettingsLayout with its NavList.
    Every section is a SettingsSection card, static or collapsible, its rows SettingsRows. It shows: the parish's details
    and regional settings (TimeZoneSelect), the hosting plan (TrialUpgrade), the keyboard shortcuts (useHotkeyList,
-   ShortcutsDialog); member records and who can see the directory (PermissionSummary) and the ministries' category colors
-   (ColorSwatch, ColorPicker with CATEGORY_COLORS); the online giving provider (ConnectedAccount) and the funds (a new fund
+   ShortcutsDialog); member records and who can see the directory (PermissionSummary);
+   the online giving provider (ConnectedAccount) and the funds (a new fund
    through PromptDialog); the office roles (RoleManager); email, connected calendars (ConnectedAccounts) and the welcome
    email template (CodeEditor; Restore the default asks with ConfirmDialog); the theme and density (ThemeProvider,
    useTheme, useDensity) and the fellowship hall display in dark (ThemeZone); sign-out after inactivity (useSessionTimeout,
    SessionTimeout) and closing an office account (Offboarding); the settings history (AuditLog, a Scrim while older
    entries load). "View as a parish council member" turns the page read-only (ReadOnlyProvider, ReadOnly). */
-import { AuditLog, Badge, Button, CATEGORY_COLORS, CodeEditor, ColorPicker, ColorSwatch, ConfirmDialog, ConnectedAccount, ConnectedAccounts, Field,
+import { AuditLog, Badge, Button, CodeEditor, ConfirmDialog, ConnectedAccount, ConnectedAccounts, Field,
   Inline, Input, NavList, Offboarding, PermissionSummary, PromptDialog, RadioGroup, ReadOnly, ReadOnlyProvider, RoleManager, Scrim, Select,
   SessionTimeout, SettingsLayout, SettingsRow, SettingsSection, ShortcutsDialog, Stack, Switch, Text, ThemeProvider, ThemeZone, TimeZoneSelect,
   TrialUpgrade, useDensity, useHotkeyList, useSessionTimeout, useTheme, useToast } from 'plenix-platform';
 import { SitePage } from '../site.jsx';
-import { CHURCH, CLERGY, FUNDS, MEMBERS, MINISTRIES, ME } from '../data.js';
+import { CHURCH, CLERGY, FUNDS, MEMBERS, ME } from '../data.js';
 const { useState } = React;
 
 const SECTIONS = [
@@ -57,7 +57,7 @@ const AUDIT = [
   { id: 'a2', actor: { name: 'Fr. Daniel Boulos' }, at: '2026-10-22T09:12:00', action: 'Added a member to', target: 'Ministry lead', changes: [{ field: 'Members', before: '1', after: '2' }] },
   { id: 'a3', actor: { name: ME.name }, at: '2026-10-20T11:05:00', action: 'Connected', target: 'Parish Giving Online', changes: [{ field: 'Status', before: 'Not connected', after: 'Connected' }] },
   { id: 'a4', actor: { name: 'Fr. Antony Wahba' }, at: '2026-10-18T19:30:00', action: 'Changed', target: 'Sign out after inactivity', changes: [{ field: 'Minutes', before: '60', after: '30' }] },
-  { id: 'a5', actor: { name: ME.name }, at: '2026-10-15T14:22:00', action: 'Changed', target: 'Ministry colors', changes: [{ field: 'Food Pantry', before: 'orange', after: 'red' }] },
+  { id: 'a5', actor: { name: ME.name }, at: '2026-10-15T14:22:00', action: 'Changed', target: 'Parish details', changes: [{ field: 'Phone', before: '(555) 010-1000', after: '(555) 010-1001' }] },
 ];
 const OLDER = [
   { id: 'a6', actor: { name: 'Fr. Daniel Boulos' }, at: '2026-09-30T10:00:00', action: 'Created', target: 'Treasurer', changes: [] },
@@ -153,8 +153,6 @@ function General({ council }) {
 function People() {
   const [district, setDistrict] = useState(true);
   const [visibility, setVisibility] = useState('members');
-  const [ministry, setMinistry] = useState(MINISTRIES[0].id);
-  const [colors, setColors] = useState(() => Object.fromEntries(MINISTRIES.map((m, i) => [m.id, CATEGORY_COLORS[i % CATEGORY_COLORS.length]])));
   const active = MEMBERS.filter((m) => m.status === 'active').length;
   return (
     <>
@@ -171,17 +169,6 @@ function People() {
         <PermissionSummary icon="settings-users" access={visibility === 'members' ? 'Members of the parish can view the directory' : visibility === 'servants' ? 'Servants can view the directory' : 'Only the church office can view the directory'}
           detail={'The online and printed directory · ' + active + ' active members'} can={['View names and families', 'Call or email a family', 'Print their own household']}
           cannot={['See giving', 'Edit another household', 'Export the directory']} live />
-      </SettingsSection>
-      <SettingsSection title="Ministry colors" description="Each ministry’s color on the calendar and the sign-up sheets." collapsible>
-        <SettingsRow label="Ministry" htmlFor="ministry-color-of">
-          <Select id="ministry-color-of" value={ministry} onChange={(e) => setMinistry(e.target.value)} options={MINISTRIES.map((m) => ({ value: m.id, label: m.name }))} />
-        </SettingsRow>
-        <SettingsRow label="Color" description="Only the category colors: each stays readable on the calendar.">
-          <ColorPicker palette="category" label={'Color of ' + MINISTRIES.find((m) => m.id === ministry).name} value={colors[ministry]} onChange={(c) => setColors((x) => ({ ...x, [ministry]: c }))} />
-        </SettingsRow>
-        <Inline wrap gap="md">
-          {MINISTRIES.map((m) => <ColorSwatch key={m.id} category={colors[m.id]} label={m.name} showLabel pressed={m.id === ministry} onClick={() => setMinistry(m.id)} />)}
-        </Inline>
       </SettingsSection>
     </>
   );
