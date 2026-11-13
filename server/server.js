@@ -65,6 +65,7 @@ const q = async (sql, params) => (await db.query(sql, params)).rows;
 const setting = async (k) => ((await q('SELECT value FROM settings WHERE key = $1', [k]))[0] || {}).value || {};
 const groupBy = (rows, key, val) => { const o = {}; rows.forEach((r) => { (o[r[key]] = o[r[key]] || []).push(r[val]); }); return o; };
 const LISTS = {
+  churchcrm: () => churchcrm.state(),   // how ChurchCRM is, for the notice on the three pilot screens
   church: () => setting('church'),
   me: async () => {
     const me = await setting('me');

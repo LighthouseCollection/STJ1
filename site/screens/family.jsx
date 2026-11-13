@@ -4,8 +4,8 @@
    NetworkGraph of the household and the related families in the parish, and Members a static Table. Edit address opens
    a FormFlow in a drawer (edit mode, guarded while it has changes). */
 import { Badge, Breadcrumbs, Button, DetailPage, EmptyState, Field, FormFlow, Inline, Input, Isolate, NetworkGraph, PageContent, Persona, RoleLabel, Stack, Table, Text, Tree } from 'plenix-platform';
-import { FAMILIES, MEMBER_STATUS, familyById, membersOf } from '../data.js';
-import { SitePage } from '../site.jsx';
+import { FAMILIES, MEMBER_STATUS, familyById, membersOf, CHURCHCRM } from '../data.js';
+import { ChurchCrmNotice, SitePage } from '../site.jsx';
 import { STATUS_LOOK } from './members.jsx';
 const { useState } = React;
 
@@ -64,6 +64,7 @@ export function FamilyScreen({ screen, chrome }) {
         <Button icon="add" onClick={() => screen.navigate('/members/new')}>Add a member</Button></Inline>}
       onBack={() => screen.navigate('/families', { f: fam.id })} strings={{ sections: 'On this page' }} sections={sections}>
       <Stack gap="md">
+        <ChurchCrmNotice status={CHURCHCRM} />
         <Breadcrumbs items={[{ label: 'Families and households', href: '#/families?f=' + fam.id }, { label: fam.name }]} />
         {/* the parish office writes some notes in Arabic: the household's file number sits inside the sentence as an island. kind="id" makes it read as the
             page reads (01-20260001 in right-to-left text) from the first Plenix release after 0.75.0; 0.75.0 keeps it as written. Isolate needs 0.74.0 or later */}

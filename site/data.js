@@ -24,12 +24,13 @@ export const DOCUMENTS = [];
 export const MEDIA = [];
 export const BOOKSTORE = [];
 export const ME = {};
+export const CHURCHCRM = {};   // how ChurchCRM is: { state, message }; the notice on the pilot screens reads it
 
 // every list, by its name in the API (server.js LISTS); build.js reads this table
 export const LISTS = {
   church: CHURCH, me: ME, clergy: CLERGY, ministries: MINISTRIES, families: FAMILIES, members: MEMBERS, services: SERVICES,
   feasts: FEASTS, events: EVENTS, funds: FUNDS, gifts: GIFTS, pledges: PLEDGES, givingByMonth: GIVING_BY_MONTH,
-  servingSlots: SERVING_SLOTS, announcements: ANNOUNCEMENTS, documents: DOCUMENTS, media: MEDIA, bookstore: BOOKSTORE,
+  churchcrm: CHURCHCRM, servingSlots: SERVING_SLOTS, announcements: ANNOUNCEMENTS, documents: DOCUMENTS, media: MEDIA, bookstore: BOOKSTORE,
 };
 
 export const memberById = (id) => MEMBERS.find((m) => m.id === id);
