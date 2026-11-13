@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 # St. John the Beloved test site · build and (re)start it on the Plenix server (VM 130, 10.0.0.30). From Git Bash, in the
 # repository: bash deploy/deploy.sh   (needs this PC's SSH key on plenix@10.0.0.30)
-#   1. the smoke test passes here first (the site, the API, a save, a reset);
-#   2. the source goes to /srv/st-john/src and docker compose builds and starts the app and PostgreSQL 16
+#   1. the source goes to /srv/st-john/src and docker compose builds and starts the app and PostgreSQL 16
 #      (data in /srv/st-john/db; the password and the reset token in /srv/st-john/.env, made once on the server, never in git);
-#   3. the server's Nginx gets the st-john site file (deploy/nginx-st-john.conf) and is reloaded;
-#   4. the health check answers through Nginx.
+#   2. the server's Nginx gets the st-john site file (deploy/nginx-st-john.conf) and is reloaded;
+#   3. the health check answers through Nginx (the script exits with an error if it never does).
 # HTTPS, the address and the Authentik sign-in are Nginx Proxy Manager's (CT 102): see deploy/README.md.
 set -euo pipefail
 HOST=plenix@10.0.0.30
 cd "$(dirname "$0")/.."
-if [ "${SKIP_SMOKE:-}" != "1" ]; then DATABASE_URL=pglite:memory node test/smoke.test.js | tail -1 | grep -q SMOKE_OK || { echo "The smoke test failed: nothing deployed"; exit 1; }; fi
 # what /version.json says (owner, version-json-33): the site's version, the commit ("-dirty" when the tree has uncommitted
 # changes) and the time of the deploy; the Plenix version is package.json "plenix" unless the server's .env sets PLENIX_VERSION
 SITE_VERSION=$(node -p "require('./package.json').version")
@@ -43,5 +41,5 @@ ssh "$HOST" "set -e
   sudo cp /srv/st-john/src/deploy/nginx-st-john.conf /etc/nginx/sites-available/st-john
   sudo ln -sf /etc/nginx/sites-available/st-john /etc/nginx/sites-enabled/st-john
   sudo nginx -t -q && sudo systemctl reload nginx
-  for i in \$(seq 1 30); do curl -sf -H 'Host: stjohn.lighthouseway.org' http://127.0.0.1/healthz && break; sleep 2; done; echo"
+  for i in \$(seq 1 30); do curl -sf -H 'Host: stjohn.lighthouseway.org' http://127.0.0.1/healthz && exit 0; sleep 2; done; echo 'The health check never answered' >&2; exit 1"
 echo "Deployed. Reset by hand: ssh $HOST then curl -X POST -H \"x-reset-token: \$(sudo grep RESET_TOKEN /srv/st-john/.env | cut -d= -f2)\" http://127.0.0.1:8790/api/reset"

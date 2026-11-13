@@ -1,0 +1,11 @@
+id: D-0018
+date: 2026-11-13
+area: process
+decided_by: 'Fr. Raphael Maher (owner), 2026-11-13'
+decision: 'Two project rules (docs/project-rules.md): agents do not run the full Chrome smoke test (npm test) on the agent host, because CI runs it on every PR; and agents read the Plenix specification from the Plenix repository on the host at the version in use (git show v0.89.0:<path>), because the published site asks the host to sign in.'
+why: 'Two engineers were stopped by their memory limit while running the full smoke test on the host (kit log K-0021). Reviewers could not open the specification pages from the host (K-0020).'
+options: ['run the smoke test on the host with more memory', 'let the agent host through the site sign-in (a member changes the site access)', 'these two rules']
+status: active
+superseded_by: null
+spec_section: null
+check: 'review only: what an agent runs on the host, and where it reads the specification'
