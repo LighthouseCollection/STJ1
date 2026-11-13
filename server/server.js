@@ -162,7 +162,10 @@ async function probeEngines() {
   try {
     if (/^https?:/i.test(BASE)) {
       // a redirect (a sign-in page) or an HTML answer is not the script: only a 200 that is not text/html counts
-      const r = await fetch(url, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(5000) });
+      // a web server may refuse HEAD (403, 405, 501): then the same question is asked with GET, and the body is dropped unread
+      const ask = async (method) => { const r = await fetch(url, { method, redirect: 'manual', signal: AbortSignal.timeout(5000) }); if (method === 'GET' && r.body) r.body.cancel().catch(() => {}); return r; };
+      let r = await ask('HEAD');
+      if ([403, 405, 501].includes(r.status)) r = await ask('GET');
       ENGINES = r.status === 200 && !/text\/html/i.test(r.headers.get('content-type') || '') ? tag : '';
     } else ENGINES = fs.existsSync(path.join(BASE.replace(/^file:\/\//, ''), 'plenix-engines.js')) ? tag : '';
   } catch (e) { ENGINES = ''; }
