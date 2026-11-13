@@ -139,7 +139,7 @@ export function MemberScreen({ screen, chrome }) {
       <Panel title="Recent gifts">
         <Table label="Recent gifts" data={gifts.slice(0, 8)} empty="No gifts recorded this year" columns={[
           { title: 'Date', field: 'date', kind: 'data', render: (g) => day(g.date) }, { title: 'Fund', field: 'fund', render: (g) => fundName(g.fund) },
-          { title: 'Method', field: 'method' }, { title: 'Amount', field: 'amount', kind: 'data', align: 'right', render: (g) => money(g.amount) }]} />
+          { title: 'Method', field: 'method' }, { title: 'Amount', field: 'amount', kind: 'data', align: 'end', render: (g) => money(g.amount) }]} />
       </Panel>
     </Stack>
   );
