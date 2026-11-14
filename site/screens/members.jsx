@@ -25,9 +25,6 @@ export const STATUS_LOOK = {
   moved: { tone: 'neutral', icon: 'forward' },
   inactive: { tone: 'waiting', icon: 'snooze' },
 };
-// each ministry's tag color (category colors identify labels; they never mean a state)
-export const MINISTRY_COLOR = { 'sunday-school': 'blue', youth: 'green', deacons: 'purple', choir: 'magenta', 'bible-study': 'teal', agape: 'orange',
-  visitation: 'cyan', 'food-pantry': 'red', media: 'navy', ushers: 'olive', library: 'lavender', 'servants-prep': 'lime' };
 export const ministryName = (id) => (MINISTRIES.find((x) => x.id === id) || { name: id }).name;
 const ageOf = (m) => 2026 - Number(m.born.slice(0, 4));
 
@@ -36,7 +33,7 @@ const FIELDS = [
   { value: 'familyName', label: 'Family', kind: 'text' },
   { value: 'status', label: 'Status', kind: 'select', options: Object.keys(MEMBER_STATUS).map((k, i) => ({ value: k, label: MEMBER_STATUS[k], color: ['green', 'blue', 'grey', 'yellow'][i] })) },
   { value: 'district', label: 'District', kind: 'select', options: ['North', 'South', 'East', 'West'].map((d) => ({ value: d, label: d })) },
-  { value: 'ministries', label: 'Ministries', kind: 'multi', options: MINISTRIES.map((x) => ({ value: x.id, label: x.name, color: MINISTRY_COLOR[x.id] })) },
+  { value: 'ministries', label: 'Ministries', kind: 'multi', options: MINISTRIES.map((x) => ({ value: x.id, label: x.name })) },
   { value: 'age', label: 'Age', kind: 'number' },
   { value: 'joined', label: 'Joined', kind: 'date' },
 ];
@@ -46,7 +43,7 @@ const COLUMNS = [
   { title: 'Status', field: 'status', kind: 'center', filter: 'list', render: (m) => <Badge tone={STATUS_LOOK[m.status].tone} icon={STATUS_LOOK[m.status].icon}>{MEMBER_STATUS[m.status]}</Badge> },
   { title: 'District', field: 'district', filter: 'list' },
   { title: 'Ministries', field: 'ministries', type: 'multi', sortable: false,
-    render: (m) => (m.ministries.length ? <TagList label={'Ministries of ' + m.name}>{m.ministries.map((id) => <Tag key={id} category={MINISTRY_COLOR[id]}>{ministryName(id)}</Tag>)}</TagList> : null) },
+    render: (m) => (m.ministries.length ? <TagList label={'Ministries of ' + m.name}>{m.ministries.map((id) => <Tag key={id}>{ministryName(id)}</Tag>)}</TagList> : null) },
   { title: 'Age', field: 'age', type: 'number', kind: 'data', summary: 'average' },
   { title: 'Joined', field: 'joined', type: 'date', kind: 'data' },
 ];

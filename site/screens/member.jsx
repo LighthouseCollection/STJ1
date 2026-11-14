@@ -12,7 +12,7 @@ import {
 } from 'plenix-platform';
 import { GIFTS, FUNDS, MEMBERS, MEMBER_STATUS, SERVING_SLOTS, familyById, memberById, membersOf } from '../data.js';
 import { SitePage } from '../site.jsx';
-import { STATUS_LOOK, MINISTRY_COLOR, ministryName } from './members.jsx';
+import { STATUS_LOOK, ministryName } from './members.jsx';
 const { useState } = React;
 
 const money = (n) => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -110,7 +110,7 @@ export function MemberScreen({ screen, chrome }) {
       <Panel title="Ministries" description={rec.servant ? 'Serves as a servant in these ministries.' : 'Takes part in these ministries.'}>
         {ministries.length ? <Stack gap="sm">{ministries.map((id) => (
           <Inline key={id} gap="sm" justify="between">
-            <Inline gap="sm"><Tag category={MINISTRY_COLOR[id]}>{ministryName(id)}</Tag>
+            <Inline gap="sm"><Tag>{ministryName(id)}</Tag>
               <RoleLabel role={rec.servant ? 'Servant' : 'Member'} icon={rec.servant ? 'star' : 'person'} /></Inline>
             <Popconfirm trigger={<Button size="xs" variant="ghost" icon="close" iconOnly label={'Remove from ' + ministryName(id)} />}
               title={'Remove ' + rec.first + ' from ' + ministryName(id) + '?'} description="The ministry lead is told." confirmLabel="Remove" tone="danger"

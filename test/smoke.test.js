@@ -63,6 +63,13 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     const note = await page.$eval('#household-file-ar', (e) => ({ text: e.textContent, island: [...e.querySelectorAll('.plx-isolate')].map((i) => i.textContent), lang: e.getAttribute('lang') }));
     check('the Arabic note holds the household\'s file number as one Isolate', note.lang === 'ar' && /[\u0600-\u06FF]/.test(note.text) && note.island.length === 1 && note.island[0] === '20260001-01', JSON.stringify(note));
 
+    // D-0020 (#46): every ministry tag uses the one neutral tag style, and Settings has no ministry color picker
+    await open('#/members');
+    const tagClasses = await page.$$eval('[aria-label^="Ministries of "] > *', (a) => [...new Set(a.map((e) => e.className))]);
+    check('every ministry tag on the Members list has one neutral style', tagClasses.length === 1 && !/categor|color/i.test(tagClasses[0]), JSON.stringify(tagClasses));
+    await open('#/settings/people');
+    check('Settings has no ministry color picker', (await page.$$('#ministry-color-of')).length === 0 && !/Ministry colors/.test(await page.$eval('main', (e) => e.innerText)), 'found one');
+
     // the speed rules (#26): the page is checked each time; the built scripts have hashed names, go out compressed and are kept
     // for a year; a screen's code loads when it opens; a page asks for its data in one request, and never for every list
     const index = await fetch(BASE);
@@ -103,6 +110,6 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 16) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 18) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
