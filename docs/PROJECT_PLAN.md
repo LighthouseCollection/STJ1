@@ -1,8 +1,8 @@
 # St. John the Beloved Plenix test site — Project Plan
 
-**Written by Fr. Raphael Maher** · Template version 3.4.1 · Dispatch kit 3.4.1 · November 13, 2026
+**Written by Fr. Raphael Maher** · Template version 3.4.5 · Dispatch kit 3.4.5 · November 13, 2026
 
-Generated 2026-11-13 from the project intake by dispatch kit 3.4.1. This file is a generated snapshot of the process; the current state of the project is on the dashboard and GitHub. Do not edit it: change the intake (§0) or the project rules (`docs/project-rules.md`) instead.
+Generated 2026-11-14 from the project intake by dispatch kit 3.4.5. This file is a generated snapshot of the process; the current state of the project is on the dashboard and GitHub. Do not edit it: change the intake (§0) or the project rules (`docs/project-rules.md`) instead.
 
 > **Who works on a project.** One or more **members** (people), all with the same access and permissions, each with their own agent team. All teams work on the same GitHub repository, which is the record for everything. Each team has **one contact agent, its PM** (project manager agent). Members log requests and answer decisions on the **dashboard** (§8.3), directly on GitHub, or by talking to their PM.
 >
@@ -76,9 +76,9 @@ Answer: `Application`. It decides the role set (§5.8), the release pipeline (§
 ### Q7. Who merges?
 > **A. Self-merge (default for Library and Application)**: the agent that opens a PR turns on auto-merge; GitHub merges it once every required check passes, including the gate check (§9.2 check 15). Review roles never merge.
 > **B. PR-only**: agents open PRs; a member merges them on GitHub (the dashboard links to each one).
-> **C. Approve-first (always, for Infrastructure)**: members merge PRs, as in B; and nothing changes outside the repository until a member approves the change plan on its issue (§7.2).
+> **C. Approve-first**: members merge PRs, as in B; and nothing changes outside the repository until a member approves the change plan on its issue (§7.2). An Infrastructure project is Approve-first, or Self-merge (A) for its own PRs while every change outside the repository still needs approval (§7.2).
 
-Answer: `PR-only`, recorded as D-0005 and enforced by GitHub branch protection and the bot identity's permissions (§9.4). A member can change it later by a recorded decision, except that an Infrastructure project is always Approve-first.
+Answer: `Self-merge`, recorded as D-0005 and enforced by GitHub branch protection and the bot identity's permissions (§9.4). A member can change it later by a recorded decision, except that an Infrastructure project is always Approve-first.
 
 ### Q8. Members and teams
 For each member: name, GitHub username, and team name. **Every member has the same access and permissions.** Each member's agents form that member's team; members may share a team. The first team listed is the **lead team** (`core`), whose PM owns the project-wide records (§5.10). Answer: `Fr. Raphael Maher (@LighthouseCollection, team core)` (D-0006).
@@ -539,7 +539,7 @@ Every session runs as an interactive agent session in a terminal multiplexer on 
 
 ### 6.6 The dispatch kit
 
-This plan ships with the **dispatch kit**, which always carries the same version number as this template (3.4.1). The kit refuses to run if the two differ. A project does not rewrite it.
+This plan ships with the **dispatch kit**, which always carries the same version number as this template (3.4.5). The kit refuses to run if the two differ. A project does not rewrite it.
 
 | Part | What it does |
 |---|---|
@@ -612,6 +612,7 @@ Sizes: XS is under an hour of work; S, under half a day; M, up to a day and one 
 
 **Infrastructure profile.** Servers and the network are not in git, so the rules are stricter:
 - **Look freely, change only with approval.** Every change is a **change plan** posted on its issue as a comment whose first line is `## Change plan` (what, why, risk, how to undo, how access is kept). It runs only after a member's account posts a comment whose whole first line is `approved` (a trailing `.` or `!` is allowed), after the change plan was posted and after it was last edited, and the approval itself is not edited. Editing the plan or posting a new one needs a new approval; a member's later comment starting `revoked` withdraws it. What is approved is the plan as written; the least-rights account a member set up for the system is what limits what can actually be done. Agents comment through the bot identity, never a member's login (§11.1).
+- **Approval scope.** By default every change outside the repository needs an approved change plan (intake `approval.scope: all`). A member may decide `approval.scope: dangerous`: agents then make ordinary changes without approval, saying on the issue what they will change before they do it and recording it in the inventory, and only these still need an approved plan: any change to the agent host itself; changes to the protected machines and guests the intake names (`approval.protected_hosts`, `approval.protected_guests`); host-level changes on the hypervisors it names (`approval.hypervisors`); firewall, port-forward, network and DNS changes; and deleting a guest, a snapshot or a backup. MCP tools follow the same rule: a tool that changes something is treated as a change command, and reads need no approval.
 - **Who applies it:** the Infrastructure Maintainer or Network Engineer, activated again after the approval, applies it directly (not through CI); this is the one exception to "deploys run only through CI".
 - **Never cut off the agent host or the members.** A change to the rules, ports, or settings remote access depends on also needs a member to say on the issue that they are online, and runs while they are.
 - **Least access.** Each system gets its own account or token with only the rights granted, set up by a member.
@@ -917,7 +918,7 @@ Decisions are recorded in `decisions/`, one file per decision (so two decision P
 | D-0002 | Design system and its published specification (**locked**) | `Plenix` at `https://design-system.lighthouseway.org/`, version `0.89.0` |
 | D-0016 (supersedes D-0003) | Repository, and for Existing the import source and cutover status | `LighthouseCollection/STJ1`. Imported from STJ1 on VM 131 (folder /home/cc/stj1, PM "STJ1 - PM"); old team stopped: yes. |
 | D-0004 | Hosting and environments | `production https://stjohn.lighthouseway.org/` |
-| D-0005 | Merge rights | `PR-only` |
+| D-0019 (supersedes D-0005) | Merge rights | `Self-merge` |
 | D-0006 | Members and teams | `Fr. Raphael Maher (@LighthouseCollection, team core)` |
 | D-0007 | Runtimes and billing | `PM on claude-code; other roles on claude-code; business seat dedicated to the agent host` |
 | D-0008 | Connections | The connection register (`docs/connections.md`) |
