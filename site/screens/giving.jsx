@@ -55,9 +55,9 @@ const PLEDGE_COLUMNS = [
   { title: 'Pledge', field: 'id', kind: 'data', width: '--plx-ref-size-80px' },
   { title: 'Member', field: 'name', kind: 'name' },
   { title: 'Fund', field: 'fundName' },
-  { title: 'Pledged', field: 'amount', type: 'currency', align: 'right', headerAlign: 'right', render: (p) => usd(p.amount) },
-  { title: 'Paid', field: 'paid', type: 'currency', align: 'right', headerAlign: 'right', render: (p) => usd(p.paid) },
-  { title: 'Remaining', field: 'remaining', type: 'currency', align: 'right', headerAlign: 'right', render: (p) => usd(p.remaining) },
+  { title: 'Pledged', field: 'amount', type: 'currency', align: 'end', render: (p) => usd(p.amount) },
+  { title: 'Paid', field: 'paid', type: 'currency', align: 'end', render: (p) => usd(p.paid) },
+  { title: 'Remaining', field: 'remaining', type: 'currency', align: 'end', render: (p) => usd(p.remaining) },
   { title: 'Frequency', field: 'frequency' },
   { title: 'Status', field: 'status', kind: 'center', render: (p) => <Badge tone={PLEDGE_TONES[p.status][0]} icon={PLEDGE_TONES[p.status][1]}>{p.status}</Badge> },
 ];

@@ -41,6 +41,13 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
       check('page ' + p.id, !errs.length, errs.slice(0, 3).join(' | '));
     }
 
+    // DataGrid columns (#47): Plenix 0.89.0 has no headerAlign prop (the header follows the column), and an amount column is
+    // aligned with the logical value "end", never the physical "right", so it flips with the reading direction
+    const shown = fs.readdirSync(path.join(__dirname, '..', 'site', 'screens')).filter((f) => /\.jsx$/.test(f));
+    const colSrc = (f) => fs.readFileSync(path.join(__dirname, '..', 'site', 'screens', f), 'utf8');
+    check('no column sets the ignored headerAlign prop', !shown.some((f) => /headerAlign/.test(colSrc(f))), shown.filter((f) => /headerAlign/.test(colSrc(f))).join(', '));
+    check('amount columns align to the end, not the physical right', !shown.some((f) => /type: 'currency'[^}]*align: 'right'|field: 'amount'[^}]*align: 'right'/.test(colSrc(f))), shown.filter((f) => /align: 'right'/.test(colSrc(f))).join(', '));
+
     // Plenix parts the screens added for the Plenix coverage test (#338): the servants' vote (VoteTally) and the Arabic file number (Isolate).
     // Each is first looked for where it is not drawn, so the check can see an absence; then where it is.
     const open = async (hash) => { await page.goto('about:blank'); await page.goto(BASE + hash, { waitUntil: 'networkidle0', timeout: 60000 }); await page.waitForSelector('main', { timeout: 15000 }); };
@@ -103,6 +110,6 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 16) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 18) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

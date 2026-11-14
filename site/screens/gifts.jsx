@@ -29,7 +29,7 @@ const COLUMNS = [
   { title: 'Member', field: 'name', kind: 'name', filter: true },
   { title: 'Fund', field: 'fund', filter: 'list' },
   { title: 'Method', field: 'method', filter: 'list' },
-  { title: 'Amount', field: 'amount', type: 'currency', align: 'right', headerAlign: 'right', summary: 'sum', render: (g) => usd(g.amount) },
+  { title: 'Amount', field: 'amount', type: 'currency', align: 'end', summary: 'sum', render: (g) => usd(g.amount) },
 ];
 
 const FUND_OPTIONS = [{ value: '', label: 'Every fund' }].concat(FUNDS.map((f) => ({ value: f.name, label: f.name })));
