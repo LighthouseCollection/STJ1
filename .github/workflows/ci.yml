@@ -11,6 +11,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash   # bash with pipefail (lesson A-03)
+
 jobs:
   smoke:
     name: Build and smoke test (PostgreSQL 16)
