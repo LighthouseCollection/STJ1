@@ -61,7 +61,7 @@ export function DirectoryScreen({ screen, chrome }) {
         <DataToolbar label="Directory view"
           start={<TagList label="Show"><Chip selected={servantsOnly} onClick={() => { setServantsOnly(!servantsOnly); setPage(1); }}>Servants only</Chip>
             <Chip selected={phones} onClick={() => setPhones(!phones)}>Phone numbers</Chip></TagList>}
-          end={<Text variant="secondary">{families.length} households · {people.length} people</Text>} />
+          end={<Text variant="secondary" truncate>{families.length} households · {people.length} people</Text>} />
 
         <Panel title="The printed directory" description="The office prints it each Nayrouz. These actions fold into the more button when the page is narrow.">
           <Stack gap="md">

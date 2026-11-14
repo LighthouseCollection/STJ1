@@ -2,11 +2,13 @@
    parish as a card (Card with its icon beside the title, in a ContentGrid), the ways to get involved (FeatureCard), how the
    ministries report to the clergy (Diagram, boxes and arrows, and beside it the same as a TreeChart, left to right or top
    to bottom; owner, 2026-10-26, charts-tree-26), how many servants each ministry has (Treemap), and the
-   classes and groups of every ministry to browse (MillerColumns) or choose in a form (Cascader, TreeSelect).
+   classes and groups of every ministry to browse (MillerColumns) or choose in a form (Cascader, TreeSelect), with the
+   groups you help listed under the form, one title line each (EntityTitle: the ministry's icon, the group, its ministry and
+   class, the ministry's area as a tag; Plenix #803).
    Plenix parts: SitePage, PageContent, RecordPage.Header, Pictogram, ContentGrid, Card, FeatureCard, Diagram, TreeChart,
      SegmentedControl, Treemap,
-   MillerColumns, Cascader, TreeSelect, Panel, Field, Columns, Stack, Inline, Text, Count, Heading, Select. */
-import { Card, Cascader, Columns, ContentGrid, Count, Diagram, FeatureCard, Field, Heading, Inline, MillerColumns, PageContent, Panel, SegmentedControl, TreeChart,
+   MillerColumns, Cascader, TreeSelect, EntityTitle, Panel, Field, Columns, Stack, Inline, Text, Count, Heading, Select. */
+import { Card, Cascader, Columns, ContentGrid, Count, Diagram, EntityTitle, FeatureCard, Field, Heading, Inline, MillerColumns, PageContent, Panel, SegmentedControl, TreeChart,
   Pictogram, RecordPage, Select, Stack, Text, Treemap, TreeSelect } from 'plenix-platform';
 import { CHURCH, CLERGY, MINISTRIES } from '../data.js';
 import { SitePage } from '../site.jsx';
@@ -147,6 +149,15 @@ export function MinistriesScreen({ chrome }) {
                 <Field label="Every group you help" description={serving.length + (serving.length === 1 ? ' group' : ' groups')}>
                   <TreeSelect multiple search nodes={MINISTRY_TREE} values={serving} onChange={(ids) => setServing(ids)} width="fill" />
                 </Field>
+                {/* the groups you help, one title line each (EntityTitle, Plenix #803) */}
+                <Stack gap="xs">
+                  {serving.map((id) => {
+                    const f = findNode(id);
+                    if (!f) return null;
+                    const ministry = f.trail[0];
+                    return <EntityTitle key={id} icon={ministry.icon} title={f.node.label} subtitle={f.trail.slice(0, -1).map((n) => n.label).join(' / ')} tag={ministry.description} />;
+                  })}
+                </Stack>
               </Stack>
             </Columns>
           </Panel>

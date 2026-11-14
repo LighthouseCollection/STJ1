@@ -5,11 +5,11 @@
    MenuSub to open a folder); a FileList of recent files; a FileRowList of FileRows sent in for review; File chips for
    Sunday; RenameAction (dialog); UploadManager with useUploadQueue (simulated uploads), a DropZone and a FileInput;
    ShareDialog; PermissionsEditor; AttachmentPicker and FilePicker for an email to the servants; DownloadManager;
-   AccessRequest for the parish council folder. */
+   AccessRequest for the parish council folder; a MenuBar (File, Edit, View, Help, each a MenuBarMenu) over the library (the Plenix that follows 0.79.0). */
 import {
   AccessRequest, AttachmentPicker, Badge, Button, DownloadManager, DropZone, EntityHeader, Field, File, FileBrowser, FileInput,
   FileList, FilePicker, FileRow, FileRowList, Inline, LoadingOverlay, Menu, MenuDivider, MenuGroup, MenuItem, MenuRadioGroup,
-  MenuSub, PageContent, Panel, PermissionsEditor, RenameAction, SectionHeading, ShareDialog, Skeleton, Spinner, Stack, Text,
+  MenuBar, MenuBarMenu, MenuSub, PageContent, Panel, PermissionsEditor, RenameAction, SectionHeading, ShareDialog, Skeleton, Spinner, Stack, Text,
   UploadManager, useToast, useUploadQueue, Columns,
 } from 'plenix-platform';
 import { CLERGY, DOCUMENTS, MINISTRIES } from '../data.js';
@@ -68,6 +68,7 @@ export function DocumentsScreen({ screen, chrome }) {
   const [folder, setFolder] = useState(null);
   const [opening, setOpening] = useState(true);
   const [moving, setMoving] = useState(false);
+  const [sizes, setSizes] = useState(true);   // the library menu bar's View > Show file sizes (a check item)
   const [sort, setSort] = useState({ field: 'modified', dir: 'desc' });
   const [uploadOpen, setUploadOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -155,6 +156,28 @@ export function DocumentsScreen({ screen, chrome }) {
             facts={[{ label: 'Files', value: files.length, data: true }, { label: 'Folders', value: FOLDERS.length, data: true }, { label: 'This week’s bulletin', value: bulletin ? bulletin.name : '—', data: true }]}
             next={{ title: 'Send in the bulletin for Sunday', detail: 'Due Friday · Church office' }}
             actions={[{ icon: 'upload', label: 'Upload files', onClick: () => setUploadOpen(true) }, { icon: 'share', label: 'Share', onClick: () => setShareOpen(true) }]} />
+
+          <MenuBar label="Library">
+            <MenuBarMenu label="File">
+              <MenuItem icon="upload" onSelect={() => setUploadOpen(true)}>Upload files…</MenuItem>
+              <MenuItem icon="share" onSelect={() => setShareOpen(true)}>Share the library…</MenuItem>
+              <MenuSub label="Open a folder">
+                {FOLDERS.slice(0, 4).map((f) => <MenuItem key={f.id} onSelect={() => setFolder(f.id)}>{f.name}</MenuItem>)}
+              </MenuSub>
+            </MenuBarMenu>
+            <MenuBarMenu label="Edit">
+              <MenuItem onSelect={() => toast.show('All files in this folder selected')}>Select all</MenuItem>
+              <MenuItem onSelect={() => toast.show('Selection cleared')}>Clear the selection</MenuItem>
+            </MenuBarMenu>
+            <MenuBarMenu label="View">
+              <MenuItem checked={sizes} onSelect={() => { setSizes(!sizes); toast.show(sizes ? 'File sizes hidden' : 'File sizes shown'); }}>Show file sizes</MenuItem>
+              <MenuDivider />
+              <MenuItem onSelect={() => setFolder(null)}>Back to the library</MenuItem>
+            </MenuBarMenu>
+            <MenuBarMenu label="Help">
+              <MenuItem onSelect={() => toast.show('The church office keeps the library. Ask them for a folder you cannot see.')}>About the library</MenuItem>
+            </MenuBarMenu>
+          </MenuBar>
 
           <Inline justify="between" wrap>
             <SectionHeading level={2}>Library</SectionHeading>

@@ -41,6 +41,20 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
       check('page ' + p.id, !errs.length, errs.slice(0, 3).join(' | '));
     }
 
+    // Reflow at 320px (plenix-ds/pds#13): the Directory page was 390px wide because its toolbar summary ("N households · N people")
+    // would not shrink. It must now fit the screen, with no sideways scroll, and the summary must stay inside the page.
+    await page.setViewport({ width: 320, height: 800 });
+    await page.goto('about:blank');
+    await page.goto(BASE + '#/directory', { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.waitForFunction(() => document.querySelector('main') && document.querySelector('main').innerText.trim().length > 20, { timeout: 15000 });
+    const narrow = await page.evaluate(() => {
+      const el = [...document.querySelectorAll('main *')].find((e) => !e.children.length && /\d+ households · \d+ people/.test(e.textContent));
+      const r = el && el.getBoundingClientRect();
+      return { scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth, right: r ? Math.round(r.right) : null, ellipsis: el ? getComputedStyle(el).textOverflow : null };
+    });
+    check('the Directory fits 320px with no sideways scroll, its summary inside the page', narrow.scroll <= narrow.client && narrow.right !== null && narrow.right <= narrow.client, JSON.stringify(narrow));
+    await page.setViewport({ width: 1440, height: 1000 });
+
     // Plenix parts the screens added for the Plenix coverage test (#338): the servants' vote (VoteTally) and the Arabic file number (Isolate).
     // Each is first looked for where it is not drawn, so the check can see an absence; then where it is.
     const open = async (hash) => { await page.goto('about:blank'); await page.goto(BASE + hash, { waitUntil: 'networkidle0', timeout: 60000 }); await page.waitForSelector('main', { timeout: 15000 }); };
@@ -103,6 +117,6 @@ const chrome = () => process.env.CHROME_PATH || ['C:/Program Files/Google/Chrome
     await browser.close();
     server.close();
   }
-  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 16) + ' checks');
+  console.log(failed.length ? 'SMOKE_FAIL ' + failed.length : 'SMOKE_OK ' + (PAGES.length + 17) + ' checks');
   process.exit(failed.length ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

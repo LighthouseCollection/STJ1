@@ -2,12 +2,13 @@
    by default): its header (the ministry's kind as an IconTile, the documented media of a record header), the servants it
    still needs (ProgressBar, Count, ContextualHelp), the meeting details (Popover, Tooltip), the order of its classes
    (SortableList) and of this Sunday's lesson plan (useSortable with a DragHandle per row), this month's lessons
-   (CollapsibleSection with ShowMore), the servants' vote on a motion (VoteTally) and how classes are grouped (Details).
+   (CollapsibleSection with ShowMore), the servants' vote on a motion (VoteTally), the ministry's actions in a row that folds what does not fit
+   into a "…" menu (OverflowList) and how classes are grouped (Details).
    Plenix parts: SitePage, PageContent, RecordPage, IconTile, Panel, ProgressBar, Count, ContextualHelp, Popover, Tooltip,
    Button, SortableList, DragHandle, useSortable, CollapsibleSection, ShowMore, Details, List, Columns, Stack, Inline, Text,
-   EmptyState, Link, VoteTally (Plenix 0.74.0 and later). */
+   EmptyState, Link, VoteTally (Plenix 0.74.0 and later), OverflowList (the Plenix that follows 0.79.0). */
 import { Button, CollapsibleSection, Columns, ContextualHelp, Count, Details, DragHandle, EmptyState, IconTile, Inline, Link, List,
-  PageContent, Panel, Popover, ProgressBar, RecordPage, ShowMore, SortableList, Stack, Text, Tooltip, VoteTally, useSortable, useToast } from 'plenix-platform';
+  OverflowList, PageContent, Panel, Popover, ProgressBar, RecordPage, ShowMore, SortableList, Stack, Text, Tooltip, VoteTally, useSortable, useToast } from 'plenix-platform';
 import { MINISTRIES, SERVING_SLOTS } from '../data.js';
 import { SitePage } from '../site.jsx';
 const { useState } = React;
@@ -115,6 +116,15 @@ export function MinistryScreen({ screen, chrome }) {
                 </Stack>
               </Panel>
             </Columns>
+
+            <Panel title="Ministry actions" description="The row keeps what fits; the rest is under the … button.">
+              <OverflowList label="Ministry actions" items={[
+                { id: 'remind', label: 'Send a reminder', icon: 'mail', onSelect: () => toast.show('Reminder sent to the ' + m.name + ' servants.') },
+                { id: 'schedule', label: 'Open the schedule', icon: 'calendar', onSelect: () => toast.show('Schedule opened.') },
+                { id: 'servants', label: 'See the servants', icon: 'settings-users', onSelect: () => toast.show('Servants listed.') },
+                { id: 'meeting', label: 'Meeting time', icon: 'clock', onSelect: () => toast.show('Meets ' + m.meets + '.') },
+                { id: 'lead', label: 'Contact the lead', icon: 'person', onSelect: () => toast.show('Message to ' + m.lead + ' started.') }]} />
+            </Panel>
 
             <Panel title="Servants’ vote" description="Motion 3: hold the Kiahk retreat on December 12.">
               <VoteTally label="Motion 3: hold the Kiahk retreat on December 12" members={voters}
