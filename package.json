@@ -9,7 +9,8 @@
     "start": "node server/server.js",
     "migrate": "node db/migrate.js",
     "seed": "node db/seed.js",
-    "test": "node test/smoke.test.js"
+    "test": "node test/smoke.test.js",
+    "test:churchcrm": "node --test test/churchcrm.test.js"
   },
   "engines": { "node": ">=22" },
   "dependencies": {

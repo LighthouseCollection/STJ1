@@ -1,0 +1,28 @@
+# ChurchCRM 7.8.2 and its own MySQL, for development on a computer only (issue #12). Never deployed to VM 130.
+# ChurchCRM's code is not edited and not forked: this runs its published image as it is.
+# Not run or checked by an agent (the agent host cannot pull images from Docker Hub): a member brings it up the first time.
+#   CHURCHCRM_IMAGE   the ChurchCRM 7.8.2 image on PHP 8.4 (patched for CVE-2026-109618 and CVE-2026-109619); no default on purpose
+#   CRM_DB_PASSWORD   any password for the local MySQL
+# ChurchCRM creates its API key in its own admin pages (Admin > Users); the owner copies it into CHURCHCRM_API_KEY himself.
+name: st-john-churchcrm
+services:
+  crm-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: churchcrm
+      MYSQL_USER: churchcrm
+      MYSQL_PASSWORD: ${CRM_DB_PASSWORD:?set CRM_DB_PASSWORD}
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes: [crm-db:/var/lib/mysql]
+    healthcheck: { test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u churchcrm -p$$MYSQL_PASSWORD"], interval: 5s, timeout: 3s, retries: 30 }
+  crm:
+    image: ${CHURCHCRM_IMAGE:?set CHURCHCRM_IMAGE to the ChurchCRM 7.8.2 image on PHP 8.4}
+    depends_on: { crm-db: { condition: service_healthy } }
+    environment:
+      MYSQL_HOST: crm-db
+      MYSQL_DATABASE: churchcrm
+      MYSQL_USER: churchcrm
+      MYSQL_PASSWORD: ${CRM_DB_PASSWORD}
+    ports: ["127.0.0.1:8081:80"]   # the site's CHURCHCRM_URL default
+volumes:
+  crm-db:

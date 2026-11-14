@@ -8,12 +8,14 @@
      PUT  /api/slots/:id/signups         the servants signed up for a serving slot: { members: [ids] }
      POST /api/events/:id/rsvps          an answer to an event: { answer: yes|maybe|no, guests }
      POST /api/reset                     back to the seed (needs the RESET_TOKEN header, or RESET_OPEN=1 for tests)
-     GET  /healthz                       ok, with the counts
+     GET  /api/churchcrm/person/:id, /family/:id, /search/person?q=, /search/family?q=   read from ChurchCRM with the server's key (server/churchcrm.js)
+     GET  /healthz                       ok, with the counts and whether ChurchCRM answered
    Settings (environment):
      PORT (8790), DATABASE_URL (postgres://… or pglite:memory, see db/db.js),
      PLENIX_BASE: where Plenix is loaded from (default the CDN of PLENIX_VERSION:
        https://design-system.lighthouseway.org/cdn/<PLENIX_VERSION>/); the Plenix tests point it at their own build
      PLENIX_ENGINES: 1 or 0 decides whether the page loads plenix-engines.js (default: probed at startup)
+     CHURCHCRM_URL (default http://localhost:8081), CHURCHCRM_API_KEY (none: the site keeps its sample data)
      PLENIX_VERSION (from package.json "plenix"), RESET_TOKEN, RESET_OPEN, RESET_HOUR (3: the nightly reset, in TZ)
    On start it applies the migrations and, when the database is empty (or SEED_ON_START=1), seeds it. */
 const http = require('http');
@@ -22,6 +24,8 @@ const path = require('path');
 const util = require('util');
 const zlib = require('zlib');
 const { open } = require('../db/db.js');
+const { createChurchCrm } = require('./churchcrm.js');
+const churchcrm = createChurchCrm(process.env);
 const { migrate } = require('../db/migrate.js');
 const { seed } = require('../db/seed.js');
 
@@ -222,7 +226,8 @@ async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname;
   try {
-    if (p === '/healthz') { const n = (await db.query('SELECT (SELECT count(*) FROM members)::int AS members, (SELECT count(*) FROM gifts)::int AS gifts')).rows[0]; return send(res, 200, { ok: true, db: db.kind, plenix: BASE, ...n }); }
+    if (p === '/healthz') { const n = (await db.query('SELECT (SELECT count(*) FROM members)::int AS members, (SELECT count(*) FROM gifts)::int AS gifts')).rows[0]; return send(res, 200, { ok: true, db: db.kind, plenix: BASE, ...n, churchcrm: await churchcrm.status() }); }
+    if (p.indexOf('/api/churchcrm/') === 0) { const r = await churchcrm.handle(req.method, url); if (r) return send(res, r.status, r.body); }
     if (p === '/api/lists' && req.method === 'GET') {
       const names = [...new Set((url.searchParams.get('names') || '').split(',').filter(Boolean))];
       const unknown = names.filter((n) => !Object.prototype.hasOwnProperty.call(LISTS, n));

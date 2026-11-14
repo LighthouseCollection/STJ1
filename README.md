@@ -37,6 +37,19 @@ DATABASE_URL=pglite:memory node server/server.js     # PostgreSQL in the process
 
 Then open http://localhost:8790. With a PostgreSQL server, set `DATABASE_URL=postgres://user:pass@host:5432/stjohn`.
 
+## ChurchCRM beside the site (pilot, issue #12)
+
+The site can read parish data out of a ChurchCRM, through its own server; ChurchCRM's code is never edited. The browser calls `/api/churchcrm/…` on this server, which adds the key and calls ChurchCRM. The browser never sees the key or ChurchCRM's address.
+
+```
+CHURCHCRM_IMAGE=<the ChurchCRM 7.8.2 image> CRM_DB_PASSWORD=<any> docker compose -f docker-compose.churchcrm.yml up -d   # ChurchCRM on http://localhost:8081
+# in ChurchCRM, make an API key (Admin > Users), then set it in your own shell: never in a file of this repository
+export CHURCHCRM_API_KEY=...        # CHURCHCRM_URL defaults to http://localhost:8081
+node build.js && DATABASE_URL=pglite:memory node server/server.js
+```
+
+Without `CHURCHCRM_API_KEY` the site starts as always and keeps its sample data (`site/data.js`); `/api/churchcrm/…` answers `not-configured` with a notice. A wrong key answers one clear message (`bad-key`), and the server log names the call that failed (never the key). `/healthz` carries `churchcrm: { configured, ok }`. Check the pass-through with `node --test test/churchcrm.test.js` (a fake ChurchCRM; no browser).
+
 ## Settings (environment)
 
 | Setting | Default | What |
@@ -46,6 +59,8 @@ Then open http://localhost:8790. With a PostgreSQL server, set `DATABASE_URL=pos
 | `PLENIX_VERSION` | `plenix` in package.json | The Plenix release loaded from the CDN. |
 | `PLENIX_BASE` | the CDN of that version | Another address for the Plenix files: `plenix.js`, `plenix.css`, `theme-boot.js`, `fonts.css` and, from the release that has it, `plenix-engines.js` (the Plenix tests use their own build). |
 | `PLENIX_ENGINES` | probed at startup | `1` loads `plenix-engines.js`, `0` does not, whatever the address holds. Without it the server asks for the file once (a 200 that is not an HTML page counts; a redirect does not). |
+| `CHURCHCRM_URL` | `http://localhost:8081` | Where ChurchCRM answers. |
+| `CHURCHCRM_API_KEY` | none | ChurchCRM's API key, from the environment only. Not set: the site keeps its sample data. |
 | `RESET_TOKEN` | none | Needed in the `x-reset-token` header for `POST /api/reset`. |
 | `RESET_OPEN` | off | `1` lets anyone reset (tests only). |
 | `RESET_HOUR` | 3 | The hour of the nightly reset; `-1` turns it off. |
