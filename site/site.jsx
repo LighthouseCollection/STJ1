@@ -34,8 +34,9 @@ export function useChrome({ current, navigate, query, setQuery }) {
         myAccount={{ href: '#/account' }} settings={{ href: '#/settings/general' }} signOut={{ href: '#/sign-in' }} />} />
   );
   // only the group of the current page starts open: the pane stays short enough that its pinned footer follows the list
-  const groups = GROUPS.map((g) => ({ heading: g, defaultExpanded: NAV_PAGES.some((p) => p.group === g && p.id === current), items: NAV_PAGES.filter((p) => p.group === g).map((p) => ({ id: p.id, label: p.title, icon: p.icon, href: pageHref(p) })) }));
   const firstOf = (g) => NAV_PAGES.find((p) => p.group === g);
+  // each group heading carries the same picture as its button on the rail (the first page's icon), open or shut (#9)
+  const groups = GROUPS.map((g) => ({ heading: g, icon: firstOf(g).icon, defaultExpanded: NAV_PAGES.some((p) => p.group === g && p.id === current), items: NAV_PAGES.filter((p) => p.group === g).map((p) => ({ id: p.id, label: p.title, icon: p.icon, href: pageHref(p) })) }));
   const sideNav = (
     <NavPane label="Parish" title={CHURCH.short} as="div"
       rail={GROUPS.map((g) => { const p = firstOf(g); return <ToolRail.Item key={g} icon={p.icon} label={g} pressed={NAV_PAGES.some((x) => x.group === g && x.id === current)} onClick={() => navigate(p.navOpen || p.open || p.path)} />; })}
