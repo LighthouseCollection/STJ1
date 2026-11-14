@@ -29,7 +29,7 @@ export const STATUS_LOOK = {
 export const MINISTRY_COLOR = { 'sunday-school': 'blue', youth: 'green', deacons: 'purple', choir: 'magenta', 'bible-study': 'teal', agape: 'orange',
   visitation: 'cyan', 'food-pantry': 'red', media: 'navy', ushers: 'olive', library: 'lavender', 'servants-prep': 'lime' };
 export const ministryName = (id) => (MINISTRIES.find((x) => x.id === id) || { name: id }).name;
-const ageOf = (m) => 2026 - Number(m.born.slice(0, 4));
+const ageOf = (m) => (m.born ? 2026 - Number(m.born.slice(0, 4)) : null);
 
 const FIELDS = [
   { value: 'name', label: 'Name', kind: 'text' },
